@@ -54,6 +54,24 @@ services:
         condition: service_healthy
     volumes:
       - /tmp/depgraph:/tmp/depgraph
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  frontend:
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+    container_name: depgraph-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   postgres_data:
