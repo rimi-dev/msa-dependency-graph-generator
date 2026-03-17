@@ -22,6 +22,13 @@ class IngestionService(
 
     @Async
     fun ingest(projectId: String, request: IngestRequest) {
+        ingestSync(projectId, request)
+    }
+
+    /**
+     * Synchronous ingestion — use from already-async callers (e.g. AnalyzeService).
+     */
+    fun ingestSync(projectId: String, request: IngestRequest) {
         log.info { "Starting ingestion for project: $projectId" }
         projectService.updateStatus(projectId, ProjectStatus.INGESTING)
 
@@ -46,6 +53,31 @@ class IngestionService(
             log.error(ex) { "Unexpected error during ingestion for project: $projectId" }
             projectService.updateStatus(projectId, ProjectStatus.ERROR)
             throw IngestionException("Ingestion failed: ${ex.message}", ex)
+        }
+    }
+
+    /**
+     * Synchronous ZIP ingestion — extracts and analyzes a ZIP file.
+     */
+    fun ingestZip(projectId: String, file: org.springframework.web.multipart.MultipartFile) {
+        log.info { "Starting ZIP ingestion for project: $projectId" }
+        projectService.updateStatus(projectId, ProjectStatus.INGESTING)
+
+        try {
+            val workDir = zipIngestionService.extract(file)
+
+            projectService.updateStatus(projectId, ProjectStatus.ANALYZING)
+            analysisOrchestrator.analyze(projectId, workDir)
+            projectService.updateStatus(projectId, ProjectStatus.READY)
+            log.info { "ZIP ingestion completed for project: $projectId" }
+        } catch (ex: IngestionException) {
+            log.error(ex) { "ZIP ingestion failed for project: $projectId" }
+            projectService.updateStatus(projectId, ProjectStatus.ERROR)
+            throw ex
+        } catch (ex: Exception) {
+            log.error(ex) { "Unexpected error during ZIP ingestion for project: $projectId" }
+            projectService.updateStatus(projectId, ProjectStatus.ERROR)
+            throw IngestionException("ZIP ingestion failed: ${ex.message}", ex)
         }
     }
 
