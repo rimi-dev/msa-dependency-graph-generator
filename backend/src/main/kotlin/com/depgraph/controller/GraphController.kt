@@ -1,7 +1,7 @@
 package com.depgraph.controller
 
 import com.depgraph.dto.ApiResponse
-import com.depgraph.dto.DependencyGraphResponse
+import com.depgraph.dto.GraphDataResponse
 import com.depgraph.service.GraphService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -13,6 +13,6 @@ class GraphController(
 ) {
 
     @GetMapping
-    fun getGraph(@PathVariable projectId: String): ResponseEntity<ApiResponse<DependencyGraphResponse>> =
-        ResponseEntity.ok(ApiResponse.success(graphService.getGraph(projectId)))
+    fun getGraph(@PathVariable projectId: String): ResponseEntity<ApiResponse<GraphDataResponse>> =
+        ResponseEntity.ok(ApiResponse.success(graphService.getGraphForFrontend(projectId)))
 }

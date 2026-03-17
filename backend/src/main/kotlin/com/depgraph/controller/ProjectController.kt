@@ -3,6 +3,7 @@ package com.depgraph.controller
 import com.depgraph.dto.ApiResponse
 import com.depgraph.dto.CreateProjectRequest
 import com.depgraph.dto.IngestRequest
+import com.depgraph.dto.ProjectListResponse
 import com.depgraph.dto.ProjectResponse
 import com.depgraph.dto.UpdateProjectRequest
 import com.depgraph.service.ProjectService
@@ -20,8 +21,8 @@ class ProjectController(
 ) {
 
     @GetMapping
-    fun listProjects(): ResponseEntity<ApiResponse<List<ProjectResponse>>> =
-        ResponseEntity.ok(ApiResponse.success(projectService.findAll()))
+    fun listProjects(): ResponseEntity<ApiResponse<List<ProjectListResponse>>> =
+        ResponseEntity.ok(ApiResponse.success(projectService.findAllForFrontend()))
 
     @GetMapping("/{id}")
     fun getProject(@PathVariable id: String): ResponseEntity<ApiResponse<ProjectResponse>> =
