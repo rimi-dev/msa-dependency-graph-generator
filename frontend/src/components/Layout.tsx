@@ -1,12 +1,22 @@
 import React from 'react';
 import { useTheme } from '@/hooks/useTheme';
 
+interface User {
+  id: string;
+  login: string;
+  name: string | null;
+  email: string | null;
+  avatarUrl: string | null;
+}
+
 interface LayoutProps {
   children: React.ReactNode;
   sidebar: React.ReactNode;
+  user?: User | null;
+  onLogout?: () => void;
 }
 
-export const Layout: React.FC<LayoutProps> = ({ children, sidebar }) => {
+export const Layout: React.FC<LayoutProps> = ({ children, sidebar, user, onLogout }) => {
   const { isDark, toggleTheme } = useTheme();
 
   return (
@@ -45,6 +55,29 @@ export const Layout: React.FC<LayoutProps> = ({ children, sidebar }) => {
           >
             {isDark ? '☀️' : '🌙'}
           </button>
+
+          {/* User info */}
+          {user && (
+            <div className="flex items-center gap-2 ml-2 pl-2 border-l border-[var(--border)]">
+              {user.avatarUrl && (
+                <img
+                  src={user.avatarUrl}
+                  alt={user.login}
+                  className="w-7 h-7 rounded-full"
+                />
+              )}
+              <span className="text-xs text-[var(--text-secondary)] font-medium">
+                {user.login}
+              </span>
+              <button
+                onClick={onLogout}
+                className="text-xs px-2 py-1 rounded-md hover:bg-[var(--surface-2)] transition-colors text-[var(--text-muted)]"
+                title="로그아웃"
+              >
+                Logout
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
