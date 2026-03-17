@@ -2,6 +2,7 @@ package com.depgraph.config
 
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.core.annotation.Order
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.http.SessionCreationPolicy
@@ -19,7 +20,22 @@ class SecurityConfig(
 ) {
 
     @Bean
-    fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
+    @Order(1)
+    fun oauth2SecurityFilterChain(http: HttpSecurity): SecurityFilterChain {
+        return http
+            .securityMatcher("/oauth2/**", "/login/oauth2/**")
+            .csrf { it.disable() }
+            .cors { it.configurationSource(corsConfigurationSource()) }
+            .authorizeHttpRequests { it.anyRequest().permitAll() }
+            .oauth2Login { oauth2 ->
+                oauth2.successHandler(oAuth2SuccessHandler)
+            }
+            .build()
+    }
+
+    @Bean
+    @Order(2)
+    fun apiSecurityFilterChain(http: HttpSecurity): SecurityFilterChain {
         return http
             .csrf { it.disable() }
             .cors { it.configurationSource(corsConfigurationSource()) }
@@ -29,15 +45,10 @@ class SecurityConfig(
                     "/actuator/**",
                     "/ws/**",
                     "/api/v1/analyze",
-                    "/api/v1/jobs/**",
-                    "/oauth2/**",
-                    "/login/oauth2/**"
+                    "/api/v1/jobs/**"
                 ).permitAll()
                 auth.requestMatchers("/api/v1/**").authenticated()
                 auth.anyRequest().permitAll()
-            }
-            .oauth2Login { oauth2 ->
-                oauth2.successHandler(oAuth2SuccessHandler)
             }
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
             .build()
