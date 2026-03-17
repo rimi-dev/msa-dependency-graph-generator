@@ -21,7 +21,6 @@ spring:
     open-in-view: false
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
         default_schema: public
 
@@ -34,6 +33,8 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+      repositories:
+        enabled: false
       password: ${REDIS_PASSWORD:}
       timeout: 2000ms
       lettuce:
@@ -41,6 +42,15 @@ spring:
           max-active: 8
           max-idle: 4
           min-idle: 1
+
+  security:
+    oauth2:
+      client:
+        registration:
+          github:
+            client-id: ${GITHUB_CLIENT_ID:placeholder}
+            client-secret: ${GITHUB_CLIENT_SECRET:placeholder}
+            scope: read:user,user:email
 
   servlet:
     multipart:
@@ -75,6 +85,12 @@ logging:
     com.depgraph: DEBUG
     org.springframework.web: INFO
     org.hibernate.SQL: WARN
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:depgraph-dev-secret-key-must-be-at-least-256-bits-long!!}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+  frontend-url: ${FRONTEND_URL:http://localhost:5173}
 
 depgraph:
   ingestion:

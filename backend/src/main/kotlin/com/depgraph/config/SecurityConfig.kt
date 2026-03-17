@@ -6,28 +6,41 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.web.SecurityFilterChain
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 
 @Configuration
 @EnableWebSecurity
-class SecurityConfig {
+class SecurityConfig(
+    private val jwtAuthenticationFilter: JwtAuthenticationFilter,
+    private val oAuth2SuccessHandler: OAuth2SuccessHandler
+) {
 
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
-        http
+        return http
             .csrf { it.disable() }
             .cors { it.configurationSource(corsConfigurationSource()) }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .authorizeHttpRequests { auth ->
-                auth
-                    .requestMatchers("/actuator/health", "/actuator/info").permitAll()
-                    .requestMatchers("/ws/**").permitAll()
-                    .requestMatchers("/api/v1/**").permitAll() // TODO: add JWT auth
-                    .anyRequest().authenticated()
+                auth.requestMatchers(
+                    "/actuator/**",
+                    "/ws/**",
+                    "/api/v1/analyze",
+                    "/api/v1/jobs/**",
+                    "/oauth2/**",
+                    "/login/oauth2/**"
+                ).permitAll()
+                auth.requestMatchers("/api/v1/**").authenticated()
+                auth.anyRequest().permitAll()
             }
-        return http.build()
+            .oauth2Login { oauth2 ->
+                oauth2.successHandler(oAuth2SuccessHandler)
+            }
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
+            .build()
     }
 
     @Bean
