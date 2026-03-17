@@ -15,7 +15,7 @@ private val log = KotlinLogging.logger {}
 @RestControllerAdvice
 class GlobalExceptionHandler {
 
-    @ExceptionHandler(ProjectNotFoundException::class, ServiceNotFoundException::class)
+    @ExceptionHandler(ProjectNotFoundException::class, ServiceNotFoundException::class, DependencyNotFoundException::class)
     fun handleNotFound(ex: DepGraphException): ResponseEntity<ApiResponse<Nothing>> {
         log.warn { "Resource not found: ${ex.message}" }
         return ResponseEntity.status(HttpStatus.NOT_FOUND)

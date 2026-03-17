@@ -26,3 +26,6 @@ class StorageException(message: String, cause: Throwable? = null) :
 
 class JobNotFoundException(jobId: String) :
     DepGraphException("Analysis job not found: $jobId")
+
+class DependencyNotFoundException(id: String) :
+    DepGraphException("Dependency not found: $id")

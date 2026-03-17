@@ -4,6 +4,7 @@ import com.depgraph.domain.Dependency
 import com.depgraph.domain.DependencyType
 import com.depgraph.domain.TechStack
 import com.depgraph.dto.*
+import com.depgraph.exception.DependencyNotFoundException
 import com.depgraph.exception.ProjectNotFoundException
 import com.depgraph.repository.DependencyRepository
 import com.depgraph.repository.ProjectRepository
@@ -114,6 +115,37 @@ class GraphService(
         DependencyType.DATABASE_SHARED -> "DB"
         DependencyType.WEBSOCKET -> "WebSocket"
         DependencyType.UNKNOWN -> "Unknown"
+    }
+
+    fun getDependencySource(projectId: String, depId: String): SourceDetailResponse {
+        val dependency = dependencyRepository.findById(depId)
+            .orElseThrow { DependencyNotFoundException(depId) }
+
+        val protocol = mapDependencyType(dependency.type)
+        val detail = parseDetail(dependency.detail)
+
+        return SourceDetailResponse(
+            dependency = DependencySummary(
+                id = dependency.id!!,
+                source = dependency.source.name,
+                target = dependency.target.name,
+                protocol = protocol,
+            ),
+            locations = if (detail["endpoint"] != null) {
+                listOf(
+                    SourceLocationDetail(
+                        filePath = "detected via static analysis",
+                        startLine = 0,
+                        endLine = 0,
+                        content = "${detail["method"] ?: "?"} ${detail["endpoint"] ?: "?"}",
+                        language = "text",
+                    )
+                )
+            } else {
+                emptyList()
+            },
+            relatedConfig = emptyList(),
+        )
     }
 
     private fun parseDetail(detail: String?): Map<String, String> {
