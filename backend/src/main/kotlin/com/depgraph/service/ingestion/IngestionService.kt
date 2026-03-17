@@ -1,0 +1,58 @@
+package com.depgraph.service.ingestion
+
+import com.depgraph.domain.ProjectStatus
+import com.depgraph.dto.IngestRequest
+import com.depgraph.exception.IngestionException
+import com.depgraph.exception.InvalidGitUrlException
+import com.depgraph.service.ProjectService
+import io.github.oshai.kotlinlogging.KotlinLogging
+import org.springframework.scheduling.annotation.Async
+import org.springframework.stereotype.Service
+import java.nio.file.Path
+
+private val log = KotlinLogging.logger {}
+
+@Service
+class IngestionService(
+    private val projectService: ProjectService,
+    private val gitCloneService: GitCloneService,
+    private val zipIngestionService: ZipIngestionService,
+    private val analysisOrchestrator: AnalysisOrchestrator,
+) {
+
+    @Async
+    fun ingest(projectId: String, request: IngestRequest) {
+        log.info { "Starting ingestion for project: $projectId" }
+        projectService.updateStatus(projectId, ProjectStatus.INGESTING)
+
+        try {
+            val workDir: Path = when {
+                request.gitUrl != null -> {
+                    validateGitUrl(request.gitUrl)
+                    gitCloneService.clone(request.gitUrl, request.branch)
+                }
+                else -> throw IngestionException("No ingestion source provided (gitUrl required)")
+            }
+
+            projectService.updateStatus(projectId, ProjectStatus.ANALYZING)
+            analysisOrchestrator.analyze(projectId, workDir)
+            projectService.updateStatus(projectId, ProjectStatus.READY)
+            log.info { "Ingestion completed for project: $projectId" }
+        } catch (ex: IngestionException) {
+            log.error(ex) { "Ingestion failed for project: $projectId" }
+            projectService.updateStatus(projectId, ProjectStatus.ERROR)
+            throw ex
+        } catch (ex: Exception) {
+            log.error(ex) { "Unexpected error during ingestion for project: $projectId" }
+            projectService.updateStatus(projectId, ProjectStatus.ERROR)
+            throw IngestionException("Ingestion failed: ${ex.message}", ex)
+        }
+    }
+
+    private fun validateGitUrl(url: String) {
+        val validPrefixes = listOf("https://", "http://", "git@", "ssh://")
+        if (validPrefixes.none { url.startsWith(it) }) {
+            throw InvalidGitUrlException(url)
+        }
+    }
+}
