@@ -1,5 +1,7 @@
 package com.depgraph.controller
 
+import com.depgraph.dto.ApiResponse
+import com.depgraph.dto.ProjectResponse
 import com.depgraph.exception.IngestionException
 import com.depgraph.service.ingestion.AnalysisOrchestrator
 import com.depgraph.service.ingestion.ZipIngestionService
@@ -24,7 +26,7 @@ class UploadController(
     fun uploadZip(
         @PathVariable projectId: String,
         @RequestParam("file") file: MultipartFile,
-    ): ResponseEntity<Map<String, String>> {
+    ): ResponseEntity<ApiResponse<ProjectResponse>> {
         if (file.isEmpty) {
             throw IngestionException("Uploaded file is empty")
         }
@@ -41,8 +43,7 @@ class UploadController(
         analysisOrchestrator.analyze(projectId, workDir)
         projectService.updateStatus(projectId, ProjectStatus.READY)
 
-        return ResponseEntity.accepted().body(
-            mapOf("message" to "Upload and analysis completed", "projectId" to projectId)
-        )
+        val project = projectService.findById(projectId)
+        return ResponseEntity.accepted().body(ApiResponse.success(project))
     }
 }
