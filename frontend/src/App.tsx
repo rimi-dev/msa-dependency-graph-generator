@@ -17,33 +17,6 @@ import type { Project } from '@/types';
 const App: React.FC = () => {
   const { user, isAuthenticated, isLoading, login, logout, checkAuth } = useAuth();
 
-  if (isLoading) {
-    return (
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        backgroundColor: '#0d1117',
-        color: '#c9d1d9'
-      }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-          <svg
-            style={{ animation: 'spin 1s linear infinite', width: 40, height: 40, color: '#3b82f6' }}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
-            <path d="M12 2a10 10 0 0 1 10 10" />
-          </svg>
-          <span style={{ fontSize: '0.875rem' }}>Loading...</span>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <Routes>
       <Route path="/login" element={
@@ -53,7 +26,7 @@ const App: React.FC = () => {
         <OAuthCallback onAuthComplete={checkAuth} />
       } />
       <Route path="/*" element={
-        isAuthenticated ? <MainApp user={user} onLogout={logout} /> : <Navigate to="/login" replace />
+        <MainApp user={user} onLogin={login} onLogout={logout} isAuthenticated={isAuthenticated} />
       } />
     </Routes>
   );
@@ -63,10 +36,12 @@ const App: React.FC = () => {
 
 interface MainAppProps {
   user: { id: string; login: string; name: string | null; email: string | null; avatarUrl: string | null } | null;
+  onLogin: () => void;
   onLogout: () => void;
+  isAuthenticated: boolean;
 }
 
-const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
+const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthenticated }) => {
   const { isDark } = useTheme();
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -242,7 +217,7 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
   );
 
   return (
-    <Layout sidebar={sidebar} user={user} onLogout={onLogout}>
+    <Layout sidebar={sidebar} user={user} onLogin={onLogin} onLogout={onLogout} isAuthenticated={isAuthenticated}>
       {graph.isLoading ? (
         <div className="h-full flex items-center justify-center bg-[var(--graph-bg)]">
           <div className="flex flex-col items-center gap-4 text-[var(--text-secondary)]">

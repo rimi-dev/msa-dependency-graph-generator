@@ -41,13 +41,6 @@ class SecurityConfig(
             .cors { it.configurationSource(corsConfigurationSource()) }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .authorizeHttpRequests { auth ->
-                auth.requestMatchers(
-                    "/actuator/**",
-                    "/ws/**",
-                    "/api/v1/analyze",
-                    "/api/v1/jobs/**"
-                ).permitAll()
-                auth.requestMatchers("/api/v1/**").authenticated()
                 auth.anyRequest().permitAll()
             }
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)

@@ -32,9 +32,6 @@ apiClient.interceptors.response.use(
 
       if (status === 401) {
         localStorage.removeItem('auth_token');
-        if (window.location.pathname !== '/login' && window.location.pathname !== '/oauth/callback') {
-          window.location.href = '/login';
-        }
       }
     } else if (error.request) {
       console.error('Network Error: No response received');
