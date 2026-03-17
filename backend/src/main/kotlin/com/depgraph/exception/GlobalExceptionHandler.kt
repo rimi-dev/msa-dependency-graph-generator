@@ -22,6 +22,13 @@ class GlobalExceptionHandler {
             .body(ApiResponse.error(ApiError(code = "NOT_FOUND", message = ex.message ?: "Not found")))
     }
 
+    @ExceptionHandler(JobNotFoundException::class)
+    fun handleJobNotFound(ex: JobNotFoundException): ResponseEntity<ApiResponse<Nothing>> {
+        log.warn { "Job not found: ${ex.message}" }
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+            .body(ApiResponse.error(ApiError(code = "JOB_NOT_FOUND", message = ex.message ?: "Job not found")))
+    }
+
     @ExceptionHandler(ProjectAlreadyExistsException::class)
     fun handleConflict(ex: DepGraphException): ResponseEntity<ApiResponse<Nothing>> {
         log.warn { "Conflict: ${ex.message}" }

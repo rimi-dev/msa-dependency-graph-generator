@@ -23,3 +23,6 @@ class InvalidGitUrlException(url: String) :
 
 class StorageException(message: String, cause: Throwable? = null) :
     DepGraphException(message, cause)
+
+class JobNotFoundException(jobId: String) :
+    DepGraphException("Analysis job not found: $jobId")
