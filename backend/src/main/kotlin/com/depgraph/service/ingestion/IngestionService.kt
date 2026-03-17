@@ -36,7 +36,7 @@ class IngestionService(
             val workDir: Path = when {
                 request.gitUrl != null -> {
                     validateGitUrl(request.gitUrl)
-                    gitCloneService.clone(request.gitUrl, request.branch)
+                    gitCloneService.clone(request.gitUrl, request.branch ?: "main")
                 }
                 else -> throw IngestionException("No ingestion source provided (gitUrl required)")
             }

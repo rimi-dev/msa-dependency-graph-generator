@@ -39,7 +39,7 @@ data class ProjectResponse(
 ) {
     companion object {
         fun from(project: Project) = ProjectResponse(
-            id = project.id,
+            id = project.id!!,
             name = project.name,
             slug = project.slug,
             description = project.description,
@@ -53,5 +53,5 @@ data class ProjectResponse(
 
 data class IngestRequest(
     val gitUrl: String? = null,
-    val branch: String = "main",
+    val branch: String? = "main",
 )
