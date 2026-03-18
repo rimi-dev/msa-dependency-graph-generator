@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { startAnalysis, startAnalysisWithZip, getJobStatus } from '@/api/analysis';
+import { analyzeProject as analyzeProjectApi } from '@/api/projects';
 import { subscribeJobProgress } from '@/api/websocket';
 import type { AnalysisStep, JobStatus } from '@/types';
 
@@ -110,9 +111,32 @@ export const useAnalysis = () => {
   );
 
   const analyzeRepo = useCallback(
-    async (repoUrl: string) => {
+    async (repoUrl: string, projectId?: string) => {
       try {
-        const res = await startAnalysis({ repoUrl });
+        const res = await startAnalysis({ repoUrl, projectId });
+        if (res.success) {
+          await startJob(res.data.jobId);
+        } else {
+          setState((prev) => ({
+            ...prev,
+            error: res.error?.message ?? 'Analysis failed to start',
+          }));
+        }
+      } catch (err) {
+        setState((prev) => ({
+          ...prev,
+          error: err instanceof Error ? err.message : 'Network error',
+          isRunning: false,
+        }));
+      }
+    },
+    [startJob]
+  );
+
+  const analyzeAllRepos = useCallback(
+    async (projectId: string) => {
+      try {
+        const res = await analyzeProjectApi(projectId);
         if (res.success) {
           await startJob(res.data.jobId);
         } else {
@@ -171,6 +195,7 @@ export const useAnalysis = () => {
   return {
     ...state,
     analyzeRepo,
+    analyzeAllRepos,
     analyzeZip,
     reset,
   };

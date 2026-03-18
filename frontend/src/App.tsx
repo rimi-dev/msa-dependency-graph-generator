@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { RepoInput } from '@/components/RepoInput';
@@ -10,8 +10,8 @@ import { useAnalysis } from '@/hooks/useAnalysis';
 import { useGraph } from '@/hooks/useGraph';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
-import type { D3Link } from '@/types';
-import { listProjects } from '@/api/projects';
+import type { D3Link, ProjectRepo } from '@/types';
+import { listProjects, getProjectDetail, addRepo, removeRepo as removeRepoApi } from '@/api/projects';
 import type { Project } from '@/types';
 
 const App: React.FC = () => {
@@ -45,6 +45,7 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthentica
   const { isDark } = useTheme();
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [projectRepos, setProjectRepos] = useState<ProjectRepo[]>([]);
   const [selectedEdge, setSelectedEdge] = useState<D3Link | null>(null);
 
   const analysis = useAnalysis();
@@ -63,6 +64,23 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthentica
       });
   }, []);
 
+  // Load repos when project is selected
+  useEffect(() => {
+    if (selectedProjectId) {
+      getProjectDetail(selectedProjectId)
+        .then((res) => {
+          if (res.success && res.data.repos) {
+            setProjectRepos(res.data.repos);
+          } else {
+            setProjectRepos([]);
+          }
+        })
+        .catch(() => setProjectRepos([]));
+    } else {
+      setProjectRepos([]);
+    }
+  }, [selectedProjectId]);
+
   // When analysis completes, switch to the new project
   useEffect(() => {
     if (analysis.completedProjectId) {
@@ -73,20 +91,61 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthentica
           if (res.success) setProjects(res.data);
         })
         .catch(() => {});
+      // Refresh repos
+      getProjectDetail(analysis.completedProjectId)
+        .then((res) => {
+          if (res.success && res.data.repos) {
+            setProjectRepos(res.data.repos);
+          }
+        })
+        .catch(() => {});
     }
   }, [analysis.completedProjectId]);
+
+  const handleAddRepo = useCallback(
+    async (gitUrl: string) => {
+      if (!selectedProjectId) return;
+      try {
+        const res = await addRepo(selectedProjectId, { gitUrl });
+        if (res.success) {
+          setProjectRepos((prev) => [...prev, res.data]);
+        }
+      } catch {
+        // Ignore - could be duplicate
+      }
+    },
+    [selectedProjectId]
+  );
+
+  const handleRemoveRepo = useCallback(
+    async (repoId: string) => {
+      if (!selectedProjectId) return;
+      try {
+        await removeRepoApi(selectedProjectId, repoId);
+        setProjectRepos((prev) => prev.filter((r) => r.id !== repoId));
+      } catch {
+        // Ignore
+      }
+    },
+    [selectedProjectId]
+  );
 
   const sidebar = (
     <>
       <RepoInput
         onAnalyzeRepo={analysis.analyzeRepo}
         onAnalyzeZip={analysis.analyzeZip}
+        onAnalyzeAllRepos={analysis.analyzeAllRepos}
+        onAddRepo={selectedProjectId ? handleAddRepo : undefined}
+        onRemoveRepo={selectedProjectId ? handleRemoveRepo : undefined}
         isRunning={analysis.isRunning}
         step={analysis.step}
         progress={analysis.progress}
         message={analysis.message}
         error={analysis.error}
         onReset={analysis.reset}
+        selectedProjectId={selectedProjectId}
+        repos={projectRepos}
       />
 
       {/* Project List */}
@@ -114,6 +173,12 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthentica
                   )}
                 </div>
                 <div className="text-[10px] text-[var(--text-muted)] mt-0.5 flex gap-2">
+                  {project.repoCount != null && project.repoCount > 0 && (
+                    <>
+                      <span>{project.repoCount} 레포</span>
+                      <span>·</span>
+                    </>
+                  )}
                   <span>{project.nodeCount} 서비스</span>
                   <span>·</span>
                   <span>{project.edgeCount} 의존성</span>
