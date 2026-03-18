@@ -40,7 +40,6 @@ class GraphService(
         )
     }
 
-    @Cacheable("dependency-graph-frontend", key = "#projectId")
     fun getGraphForFrontend(projectId: String): GraphDataResponse {
         val project = projectRepository.findById(projectId)
             .orElseThrow { ProjectNotFoundException(projectId) }
