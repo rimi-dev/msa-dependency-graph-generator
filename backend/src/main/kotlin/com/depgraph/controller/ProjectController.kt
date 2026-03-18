@@ -1,11 +1,7 @@
 package com.depgraph.controller
 
-import com.depgraph.dto.ApiResponse
-import com.depgraph.dto.CreateProjectRequest
-import com.depgraph.dto.IngestRequest
-import com.depgraph.dto.ProjectListResponse
-import com.depgraph.dto.ProjectResponse
-import com.depgraph.dto.UpdateProjectRequest
+import com.depgraph.dto.*
+import com.depgraph.service.ProjectRepoService
 import com.depgraph.service.ProjectService
 import com.depgraph.service.ingestion.IngestionService
 import jakarta.validation.Valid
@@ -17,6 +13,7 @@ import org.springframework.web.bind.annotation.*
 @RequestMapping("/api/v1/projects")
 class ProjectController(
     private val projectService: ProjectService,
+    private val projectRepoService: ProjectRepoService,
     private val ingestionService: IngestionService,
 ) {
 
@@ -26,7 +23,7 @@ class ProjectController(
 
     @GetMapping("/{id}")
     fun getProject(@PathVariable id: String): ResponseEntity<ApiResponse<ProjectResponse>> =
-        ResponseEntity.ok(ApiResponse.success(projectService.findById(id)))
+        ResponseEntity.ok(ApiResponse.success(projectService.findByIdWithRepos(id)))
 
     @GetMapping("/slug/{slug}")
     fun getProjectBySlug(@PathVariable slug: String): ResponseEntity<ApiResponse<ProjectResponse>> =
@@ -57,5 +54,40 @@ class ProjectController(
         ingestionService.ingest(id, request)
         val project = projectService.findById(id)
         return ResponseEntity.accepted().body(ApiResponse.success(project))
+    }
+
+    // --- Repo management endpoints ---
+
+    @GetMapping("/{id}/repos")
+    fun listRepos(@PathVariable id: String): ResponseEntity<ApiResponse<List<ProjectRepoResponse>>> {
+        val repos = projectRepoService.findAllByProjectId(id).map { ProjectRepoResponse.from(it) }
+        return ResponseEntity.ok(ApiResponse.success(repos))
+    }
+
+    @PostMapping("/{id}/repos")
+    fun addRepo(
+        @PathVariable id: String,
+        @Valid @RequestBody request: AddRepoRequest,
+    ): ResponseEntity<ApiResponse<ProjectRepoResponse>> {
+        val repo = projectRepoService.addRepo(id, request)
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(ProjectRepoResponse.from(repo)))
+    }
+
+    @PostMapping("/{id}/repos/batch")
+    fun addRepos(
+        @PathVariable id: String,
+        @Valid @RequestBody request: AddReposRequest,
+    ): ResponseEntity<ApiResponse<List<ProjectRepoResponse>>> {
+        val repos = projectRepoService.addRepos(id, request.repos).map { ProjectRepoResponse.from(it) }
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(repos))
+    }
+
+    @DeleteMapping("/{id}/repos/{repoId}")
+    fun removeRepo(
+        @PathVariable id: String,
+        @PathVariable repoId: String,
+    ): ResponseEntity<ApiResponse<Unit>> {
+        projectRepoService.removeRepo(id, repoId)
+        return ResponseEntity.ok(ApiResponse.success(Unit))
     }
 }

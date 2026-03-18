@@ -5,11 +5,13 @@ import com.depgraph.domain.ProjectStatus
 import com.depgraph.domain.TechStack
 import com.depgraph.dto.CreateProjectRequest
 import com.depgraph.dto.ProjectListResponse
+import com.depgraph.dto.ProjectRepoResponse
 import com.depgraph.dto.ProjectResponse
 import com.depgraph.dto.UpdateProjectRequest
 import com.depgraph.exception.ProjectAlreadyExistsException
 import com.depgraph.exception.ProjectNotFoundException
 import com.depgraph.repository.DependencyRepository
+import com.depgraph.repository.ProjectRepoRepository
 import com.depgraph.repository.ProjectRepository
 import com.depgraph.repository.ServiceRepository
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -25,6 +27,7 @@ class ProjectService(
     private val projectRepository: ProjectRepository,
     private val serviceRepository: ServiceRepository,
     private val dependencyRepository: DependencyRepository,
+    private val projectRepoRepository: ProjectRepoRepository,
 ) {
 
     fun findAll(): List<ProjectResponse> =
@@ -38,10 +41,13 @@ class ProjectService(
             val dependencies = dependencyRepository.findAllByProjectId(projectId)
             val primaryLanguage = determinePrimaryLanguage(services.map { it.techStack })
 
+            val repos = projectRepoRepository.findAllByProjectId(projectId)
+
             ProjectListResponse(
                 id = projectId,
                 name = project.name,
                 repoUrl = project.gitUrl,
+                repoCount = repos.size,
                 language = primaryLanguage,
                 createdAt = project.createdAt,
                 updatedAt = project.updatedAt,
@@ -67,6 +73,14 @@ class ProjectService(
         TechStack.FASTAPI, TechStack.DJANGO -> "python"
         TechStack.RAILS -> "ruby"
         TechStack.UNKNOWN -> "unknown"
+    }
+
+    fun findByIdWithRepos(id: String): ProjectResponse {
+        val project = projectRepository.findById(id)
+            .orElseThrow { ProjectNotFoundException(id) }
+        val repos = projectRepoRepository.findAllByProjectId(id)
+            .map { ProjectRepoResponse.from(it) }
+        return ProjectResponse.from(project, repos)
     }
 
     fun findById(id: String): ProjectResponse =

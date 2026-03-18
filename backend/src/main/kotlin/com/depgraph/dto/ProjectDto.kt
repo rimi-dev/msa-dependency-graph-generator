@@ -34,17 +34,19 @@ data class ProjectResponse(
     val description: String?,
     val gitUrl: String?,
     val status: ProjectStatus,
+    val repos: List<ProjectRepoResponse>? = null,
     val createdAt: Instant,
     val updatedAt: Instant,
 ) {
     companion object {
-        fun from(project: Project) = ProjectResponse(
+        fun from(project: Project, repos: List<ProjectRepoResponse>? = null) = ProjectResponse(
             id = project.id!!,
             name = project.name,
             slug = project.slug,
             description = project.description,
             gitUrl = project.gitUrl,
             status = project.status,
+            repos = repos,
             createdAt = project.createdAt,
             updatedAt = project.updatedAt,
         )
