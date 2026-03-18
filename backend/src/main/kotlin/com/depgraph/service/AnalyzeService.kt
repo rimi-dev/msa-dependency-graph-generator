@@ -9,6 +9,8 @@ import com.depgraph.dto.CreateProjectRequest
 import com.depgraph.dto.IngestRequest
 import com.depgraph.exception.ProjectAlreadyExistsException
 import com.depgraph.exception.ProjectNotFoundException
+import com.depgraph.exception.ProjectRepoAlreadyExistsException
+import com.depgraph.repository.ProjectRepoRepository
 import com.depgraph.repository.ProjectRepository
 import com.depgraph.service.ingestion.IngestionService
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -23,6 +25,7 @@ class AnalyzeService(
     private val projectService: ProjectService,
     private val projectRepoService: ProjectRepoService,
     private val projectRepository: ProjectRepository,
+    private val projectRepoRepository: ProjectRepoRepository,
     private val jobService: JobService,
     private val ingestionService: IngestionService,
 ) {
@@ -35,7 +38,7 @@ class AnalyzeService(
             val project = projectRepository.findById(request.projectId)
                 .orElseThrow { ProjectNotFoundException(request.projectId) }
 
-            val repo = projectRepoService.addRepo(request.projectId, AddRepoRequest(gitUrl = repoUrl))
+            val repo = findOrCreateRepo(request.projectId, repoUrl)
             val job = jobService.createJob(repoUrl = repoUrl, repo = repo)
 
             runRepoAnalysisAsync(request.projectId, repo.id!!, job.id, repoUrl)
@@ -46,7 +49,7 @@ class AnalyzeService(
         // Default: create project + repo (backward compatible)
         val (name, slug) = extractProjectInfo(repoUrl)
         val project = findOrCreateProject(name, slug, repoUrl)
-        val repo = projectRepoService.addRepo(project.id, AddRepoRequest(gitUrl = repoUrl))
+        val repo = findOrCreateRepo(project.id, repoUrl)
         val job = jobService.createJob(repoUrl = repoUrl, repo = repo)
 
         runRepoAnalysisAsync(project.id, repo.id!!, job.id, repoUrl)
@@ -152,6 +155,14 @@ class AnalyzeService(
             projectService.create(CreateProjectRequest(name = name, slug = slug, gitUrl = gitUrl))
         } catch (e: ProjectAlreadyExistsException) {
             projectService.findBySlug(slug)
+        }
+    }
+
+    private fun findOrCreateRepo(projectId: String, gitUrl: String): com.depgraph.domain.ProjectRepo {
+        return try {
+            projectRepoService.addRepo(projectId, AddRepoRequest(gitUrl = gitUrl))
+        } catch (e: ProjectRepoAlreadyExistsException) {
+            projectRepoRepository.findByProjectIdAndGitUrl(projectId, gitUrl)!!
         }
     }
 

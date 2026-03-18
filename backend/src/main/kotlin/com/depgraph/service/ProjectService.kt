@@ -1,6 +1,7 @@
 package com.depgraph.service
 
 import com.depgraph.domain.Project
+import com.depgraph.domain.ProjectRepoStatus
 import com.depgraph.domain.ProjectStatus
 import com.depgraph.domain.TechStack
 import com.depgraph.dto.CreateProjectRequest
@@ -134,6 +135,28 @@ class ProjectService(
             .orElseThrow { ProjectNotFoundException(id) }
 
         return projectRepository.save(project.copy(status = status, updatedAt = Instant.now()))
+    }
+
+    @Transactional
+    fun recalculateProjectStatus(projectId: String): Project {
+        val project = projectRepository.findById(projectId)
+            .orElseThrow { ProjectNotFoundException(projectId) }
+        val repos = projectRepoRepository.findAllByProjectId(projectId)
+
+        val newStatus = when {
+            repos.isEmpty() -> project.status
+            repos.all { it.status == ProjectRepoStatus.READY } -> ProjectStatus.READY
+            repos.any { it.status == ProjectRepoStatus.ERROR } -> ProjectStatus.ERROR
+            repos.any { it.status in listOf(ProjectRepoStatus.INGESTING, ProjectRepoStatus.ANALYZING) } -> ProjectStatus.ANALYZING
+            else -> ProjectStatus.PENDING
+        }
+
+        return if (newStatus != project.status) {
+            projectRepository.save(project.copy(status = newStatus, updatedAt = Instant.now()))
+                .also { log.info { "Recalculated project status: $projectId → $newStatus" } }
+        } else {
+            project
+        }
     }
 
     @Transactional

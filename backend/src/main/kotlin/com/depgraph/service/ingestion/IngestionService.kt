@@ -48,8 +48,8 @@ class IngestionService(
             projectService.updateStatus(projectId, ProjectStatus.ANALYZING)
             repoId?.let { projectRepoService.updateStatus(it, ProjectRepoStatus.ANALYZING) }
             analysisOrchestrator.analyze(projectId, workDir, repoId)
-            projectService.updateStatus(projectId, ProjectStatus.READY)
             repoId?.let { projectRepoService.markAnalyzed(it) }
+            projectService.recalculateProjectStatus(projectId)
             log.info { "Ingestion completed for project: $projectId, repoId: $repoId" }
         } catch (ex: IngestionException) {
             log.error(ex) { "Ingestion failed for project: $projectId" }
