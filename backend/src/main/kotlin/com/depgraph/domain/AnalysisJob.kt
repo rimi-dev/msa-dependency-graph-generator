@@ -18,6 +18,10 @@ class AnalysisJob(
     @JoinColumn(name = "project_id")
     var project: Project? = null,
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "repo_id")
+    var repo: ProjectRepo? = null,
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
     var step: AnalysisStep = AnalysisStep.CLONING,

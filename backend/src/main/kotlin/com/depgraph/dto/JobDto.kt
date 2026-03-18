@@ -4,7 +4,8 @@ import com.depgraph.domain.AnalysisStep
 import java.time.Instant
 
 data class AnalyzeRequest(
-    val repoUrl: String? = null
+    val repoUrl: String? = null,
+    val projectId: String? = null,
 )
 
 data class AnalyzeResponse(

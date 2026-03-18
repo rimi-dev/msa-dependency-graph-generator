@@ -30,6 +30,21 @@ class AnalyzeController(
         return ResponseEntity.accepted().body(ApiResponse.success(response))
     }
 
+    @PostMapping("/projects/{projectId}/analyze")
+    fun analyzeAllRepos(@PathVariable projectId: String): ResponseEntity<ApiResponse<AnalyzeResponse>> {
+        val response = analyzeService.analyzeAllRepos(projectId)
+        return ResponseEntity.accepted().body(ApiResponse.success(response))
+    }
+
+    @PostMapping("/projects/{projectId}/repos/{repoId}/analyze")
+    fun analyzeSingleRepo(
+        @PathVariable projectId: String,
+        @PathVariable repoId: String,
+    ): ResponseEntity<ApiResponse<AnalyzeResponse>> {
+        val response = analyzeService.analyzeSingleRepo(projectId, repoId)
+        return ResponseEntity.accepted().body(ApiResponse.success(response))
+    }
+
     @GetMapping("/jobs/{jobId}")
     fun getJobStatus(@PathVariable jobId: String): ResponseEntity<ApiResponse<JobStatusResponse>> {
         val status = jobService.getJobStatus(jobId)

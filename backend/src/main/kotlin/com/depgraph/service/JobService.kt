@@ -3,6 +3,7 @@ package com.depgraph.service
 import com.depgraph.domain.AnalysisJob
 import com.depgraph.domain.AnalysisStep
 import com.depgraph.domain.Project
+import com.depgraph.domain.ProjectRepo
 import com.depgraph.dto.JobStatusResponse
 import com.depgraph.exception.JobNotFoundException
 import com.depgraph.repository.AnalysisJobRepository
@@ -17,8 +18,8 @@ class JobService(
     private val analysisJobRepository: AnalysisJobRepository,
     private val messagingTemplate: SimpMessagingTemplate
 ) {
-    fun createJob(repoUrl: String? = null): AnalysisJob {
-        val job = AnalysisJob(repoUrl = repoUrl)
+    fun createJob(repoUrl: String? = null, repo: ProjectRepo? = null): AnalysisJob {
+        val job = AnalysisJob(repoUrl = repoUrl, repo = repo)
         return analysisJobRepository.save(job).also {
             logger.info { "Created analysis job: ${it.id}" }
         }
