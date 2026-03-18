@@ -29,3 +29,9 @@ class JobNotFoundException(jobId: String) :
 
 class DependencyNotFoundException(id: String) :
     DepGraphException("Dependency not found: $id")
+
+class ProjectRepoNotFoundException(id: String) :
+    DepGraphException("Project repo not found: $id")
+
+class ProjectRepoAlreadyExistsException(gitUrl: String) :
+    DepGraphException("Project repo already exists with URL: $gitUrl")

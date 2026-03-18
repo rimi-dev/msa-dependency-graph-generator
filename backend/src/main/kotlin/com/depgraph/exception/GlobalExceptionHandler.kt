@@ -15,7 +15,7 @@ private val log = KotlinLogging.logger {}
 @RestControllerAdvice
 class GlobalExceptionHandler {
 
-    @ExceptionHandler(ProjectNotFoundException::class, ServiceNotFoundException::class, DependencyNotFoundException::class)
+    @ExceptionHandler(ProjectNotFoundException::class, ServiceNotFoundException::class, DependencyNotFoundException::class, ProjectRepoNotFoundException::class)
     fun handleNotFound(ex: DepGraphException): ResponseEntity<ApiResponse<Nothing>> {
         log.warn { "Resource not found: ${ex.message}" }
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -29,7 +29,7 @@ class GlobalExceptionHandler {
             .body(ApiResponse.error(ApiError(code = "JOB_NOT_FOUND", message = ex.message ?: "Job not found")))
     }
 
-    @ExceptionHandler(ProjectAlreadyExistsException::class)
+    @ExceptionHandler(ProjectAlreadyExistsException::class, ProjectRepoAlreadyExistsException::class)
     fun handleConflict(ex: DepGraphException): ResponseEntity<ApiResponse<Nothing>> {
         log.warn { "Conflict: ${ex.message}" }
         return ResponseEntity.status(HttpStatus.CONFLICT)
