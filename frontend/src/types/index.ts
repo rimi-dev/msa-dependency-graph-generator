@@ -107,6 +107,7 @@ export interface JobStatus {
 
 export interface AnalyzeRequest {
   repoUrl?: string;
+  projectId?: string;
 }
 
 export interface AnalyzeResponse {
@@ -116,15 +117,40 @@ export interface AnalyzeResponse {
 
 // ─── Project ──────────────────────────────────────────────────────────────────
 
+export type RepoStatus = 'PENDING' | 'INGESTING' | 'ANALYZING' | 'READY' | 'ERROR';
+
+export interface ProjectRepo {
+  id: string;
+  gitUrl: string;
+  branch?: string;
+  status: RepoStatus;
+  lastAnalyzedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Project {
   id: string;
   name: string;
   repoUrl?: string;
+  repoCount?: number;
+  repos?: ProjectRepo[];
   language?: string;
   createdAt: string;
   updatedAt: string;
   nodeCount: number;
   edgeCount: number;
+}
+
+export interface CreateProjectRequest {
+  name: string;
+  slug?: string;
+  description?: string;
+}
+
+export interface AddRepoRequest {
+  gitUrl: string;
+  branch?: string;
 }
 
 // ─── D3 Graph Internal Types ──────────────────────────────────────────────────
