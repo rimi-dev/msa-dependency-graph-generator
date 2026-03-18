@@ -4,8 +4,11 @@ import jakarta.persistence.*
 import java.time.Instant
 
 @Entity
-@Table(name = "services")
-data class Service(
+@Table(
+    name = "project_repos",
+    uniqueConstraints = [UniqueConstraint(columnNames = ["project_id", "git_url"])]
+)
+data class ProjectRepo(
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     val id: String? = null,
@@ -14,19 +17,18 @@ data class Service(
     @JoinColumn(name = "project_id", nullable = false)
     val project: Project,
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "repo_id")
-    val repo: ProjectRepo? = null,
+    @Column(name = "git_url", nullable = false, length = 1024)
+    val gitUrl: String,
 
-    @Column(nullable = false)
-    val name: String,
-
-    @Column(length = 2048)
-    val path: String? = null,
+    @Column(length = 255)
+    val branch: String? = null,
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    val techStack: TechStack = TechStack.UNKNOWN,
+    val status: ProjectRepoStatus = ProjectRepoStatus.PENDING,
+
+    @Column(name = "last_analyzed_at")
+    val lastAnalyzedAt: Instant? = null,
 
     @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: Instant = Instant.now(),
@@ -35,12 +37,10 @@ data class Service(
     val updatedAt: Instant = Instant.now(),
 )
 
-enum class TechStack {
-    SPRING_BOOT,
-    NODE_EXPRESS,
-    NODE_NEST,
-    FASTAPI,
-    DJANGO,
-    RAILS,
-    UNKNOWN,
+enum class ProjectRepoStatus {
+    PENDING,
+    INGESTING,
+    ANALYZING,
+    READY,
+    ERROR,
 }

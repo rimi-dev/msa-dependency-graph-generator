@@ -8,4 +8,6 @@ import org.springframework.stereotype.Repository
 interface ServiceRepository : JpaRepository<Service, String> {
     fun findAllByProjectId(projectId: String): List<Service>
     fun deleteAllByProjectId(projectId: String)
+    fun findAllByRepoId(repoId: String): List<Service>
+    fun deleteAllByRepoId(repoId: String)
 }
