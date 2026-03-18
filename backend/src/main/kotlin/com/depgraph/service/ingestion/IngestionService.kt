@@ -1,9 +1,11 @@
 package com.depgraph.service.ingestion
 
+import com.depgraph.domain.ProjectRepoStatus
 import com.depgraph.domain.ProjectStatus
 import com.depgraph.dto.IngestRequest
 import com.depgraph.exception.IngestionException
 import com.depgraph.exception.InvalidGitUrlException
+import com.depgraph.service.ProjectRepoService
 import com.depgraph.service.ProjectService
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.scheduling.annotation.Async
@@ -15,6 +17,7 @@ private val log = KotlinLogging.logger {}
 @Service
 class IngestionService(
     private val projectService: ProjectService,
+    private val projectRepoService: ProjectRepoService,
     private val gitCloneService: GitCloneService,
     private val zipIngestionService: ZipIngestionService,
     private val analysisOrchestrator: AnalysisOrchestrator,
@@ -28,9 +31,10 @@ class IngestionService(
     /**
      * Synchronous ingestion — use from already-async callers (e.g. AnalyzeService).
      */
-    fun ingestSync(projectId: String, request: IngestRequest) {
-        log.info { "Starting ingestion for project: $projectId" }
+    fun ingestSync(projectId: String, request: IngestRequest, repoId: String? = null) {
+        log.info { "Starting ingestion for project: $projectId, repoId: $repoId" }
         projectService.updateStatus(projectId, ProjectStatus.INGESTING)
+        repoId?.let { projectRepoService.updateStatus(it, ProjectRepoStatus.INGESTING) }
 
         try {
             val workDir: Path = when {
@@ -42,18 +46,30 @@ class IngestionService(
             }
 
             projectService.updateStatus(projectId, ProjectStatus.ANALYZING)
-            analysisOrchestrator.analyze(projectId, workDir)
+            repoId?.let { projectRepoService.updateStatus(it, ProjectRepoStatus.ANALYZING) }
+            analysisOrchestrator.analyze(projectId, workDir, repoId)
             projectService.updateStatus(projectId, ProjectStatus.READY)
-            log.info { "Ingestion completed for project: $projectId" }
+            repoId?.let { projectRepoService.markAnalyzed(it) }
+            log.info { "Ingestion completed for project: $projectId, repoId: $repoId" }
         } catch (ex: IngestionException) {
             log.error(ex) { "Ingestion failed for project: $projectId" }
             projectService.updateStatus(projectId, ProjectStatus.ERROR)
+            repoId?.let { projectRepoService.updateStatus(it, ProjectRepoStatus.ERROR) }
             throw ex
         } catch (ex: Exception) {
             log.error(ex) { "Unexpected error during ingestion for project: $projectId" }
             projectService.updateStatus(projectId, ProjectStatus.ERROR)
+            repoId?.let { projectRepoService.updateStatus(it, ProjectRepoStatus.ERROR) }
             throw IngestionException("Ingestion failed: ${ex.message}", ex)
         }
+    }
+
+    /**
+     * Ingest a specific repo within a project.
+     */
+    fun ingestRepo(projectId: String, repoId: String, gitUrl: String, branch: String?) {
+        val request = IngestRequest(gitUrl = gitUrl, branch = branch ?: "main")
+        ingestSync(projectId, request, repoId)
     }
 
     /**

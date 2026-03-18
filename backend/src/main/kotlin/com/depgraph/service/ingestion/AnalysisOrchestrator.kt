@@ -6,7 +6,9 @@ import com.depgraph.domain.DependencyType
 import com.depgraph.domain.Service
 import com.depgraph.domain.TechStack
 import com.depgraph.exception.ProjectNotFoundException
+import com.depgraph.exception.ProjectRepoNotFoundException
 import com.depgraph.repository.DependencyRepository
+import com.depgraph.repository.ProjectRepoRepository
 import com.depgraph.repository.ProjectRepository
 import com.depgraph.repository.ServiceRepository
 import com.depgraph.service.analyzer.DependencyAnalyzer
@@ -23,15 +25,21 @@ class AnalysisOrchestrator(
     private val dependencyAnalyzer: DependencyAnalyzer,
     private val analyzerRegistry: AnalyzerRegistry,
     private val projectRepository: ProjectRepository,
+    private val projectRepoRepository: ProjectRepoRepository,
     private val serviceRepository: ServiceRepository,
     private val dependencyRepository: DependencyRepository,
 ) {
 
-    fun analyze(projectId: String, workDir: Path) {
-        log.info { "Starting analysis for project: $projectId at $workDir" }
+    fun analyze(projectId: String, workDir: Path, repoId: String? = null) {
+        log.info { "Starting analysis for project: $projectId, repoId: $repoId at $workDir" }
 
-        // Phase 1: legacy service detection (saves to DB)
-        val detectedServices = serviceDetector.detect(projectId, workDir)
+        val repo = repoId?.let {
+            projectRepoRepository.findById(it)
+                .orElseThrow { ProjectRepoNotFoundException(it) }
+        }
+
+        // Phase 1: legacy service detection (saves to DB, per-repo aware)
+        val detectedServices = serviceDetector.detect(projectId, workDir, repoId)
         log.info { "Detected ${detectedServices.size} services via legacy detector for project: $projectId" }
 
         // Phase 2: enhanced service detection via plugin registry
@@ -48,6 +56,7 @@ class AnalysisOrchestrator(
             .map { detected ->
                 Service(
                     project = project,
+                    repo = repo,
                     name = detected.name,
                     path = detected.rootPath.removePrefix(workDir.toString()).trimStart('/'),
                     techStack = mapFrameworkToTechStack(detected.framework, detected.language),
@@ -59,17 +68,21 @@ class AnalysisOrchestrator(
                 .also { log.info { "Saved ${it.size} newly detected services for project: $projectId" } }
         } else emptyList()
 
-        val allServices = detectedServices + savedNewServices
+        // For dependency analysis: use ALL project services (cross-repo)
+        val allProjectServices = serviceRepository.findAllByProjectId(projectId)
 
-        // Phase 3: legacy dependency analysis
-        dependencyAnalyzer.analyze(projectId, workDir, allServices)
+        // Delete all project dependencies and re-analyze (cross-repo dependencies)
+        dependencyRepository.deleteAllBySourceProjectIdOrTargetProjectId(projectId, projectId)
+
+        // Phase 3: legacy dependency analysis with all project services
+        dependencyAnalyzer.analyze(projectId, workDir, allProjectServices)
         log.info { "Legacy dependency analysis completed for project: $projectId" }
 
         // Phase 4: enhanced plugin-based dependency analysis
-        val servicesByName = allServices.associateBy { it.name.lowercase() }
+        val servicesByName = allProjectServices.associateBy { it.name.lowercase() }
         val allDependencies = mutableListOf<Dependency>()
 
-        allServices.forEach { sourceService ->
+        allProjectServices.forEach { sourceService ->
             val servicePath = workDir.resolve(sourceService.path ?: sourceService.name)
             val pluginDependencies = analyzerRegistry.analyzeDependencies(servicePath, sourceService.name)
 

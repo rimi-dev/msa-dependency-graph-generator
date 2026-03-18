@@ -1,30 +1,42 @@
 package com.depgraph.service.analyzer
 
+import com.depgraph.domain.ProjectRepo
 import com.depgraph.domain.Service
 import com.depgraph.domain.TechStack
+import com.depgraph.exception.ProjectNotFoundException
+import com.depgraph.exception.ProjectRepoNotFoundException
+import com.depgraph.repository.ProjectRepoRepository
 import com.depgraph.repository.ProjectRepository
 import com.depgraph.repository.ServiceRepository
-import com.depgraph.exception.ProjectNotFoundException
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Component
 import java.nio.file.Files
 import java.nio.file.Path
-import kotlin.streams.toList
 
 private val log = KotlinLogging.logger {}
 
 @Component
 class ServiceDetector(
     private val projectRepository: ProjectRepository,
+    private val projectRepoRepository: ProjectRepoRepository,
     private val serviceRepository: ServiceRepository,
 ) {
 
-    fun detect(projectId: String, workDir: Path): List<Service> {
+    fun detect(projectId: String, workDir: Path, repoId: String? = null): List<Service> {
         val project = projectRepository.findById(projectId)
             .orElseThrow { ProjectNotFoundException(projectId) }
 
-        // Remove existing services for re-analysis
-        serviceRepository.deleteAllByProjectId(projectId)
+        val repo: ProjectRepo? = repoId?.let {
+            projectRepoRepository.findById(it)
+                .orElseThrow { ProjectRepoNotFoundException(it) }
+        }
+
+        // Remove existing services: per-repo or whole project
+        if (repoId != null) {
+            serviceRepository.deleteAllByRepoId(repoId)
+        } else {
+            serviceRepository.deleteAllByProjectId(projectId)
+        }
 
         val detected = mutableListOf<Service>()
 
@@ -38,6 +50,7 @@ class ServiceDetector(
                         val serviceName = dir.fileName.toString()
                         val service = Service(
                             project = project,
+                            repo = repo,
                             name = serviceName,
                             path = relativePath,
                             techStack = techStack,
