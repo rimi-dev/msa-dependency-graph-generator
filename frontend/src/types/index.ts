@@ -150,6 +150,18 @@ export interface CreateProjectRequest {
   description?: string;
 }
 
+export interface ServiceInfo {
+  id: string;
+  projectId: string;
+  name: string;
+  path?: string;
+  techStack: string;
+  repoId?: string;
+  repoUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AddRepoRequest {
   gitUrl: string;
   branch?: string;

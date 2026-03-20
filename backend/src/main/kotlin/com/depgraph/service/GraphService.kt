@@ -6,6 +6,9 @@ import com.depgraph.domain.TechStack
 import com.depgraph.dto.*
 import com.depgraph.exception.DependencyNotFoundException
 import com.depgraph.exception.ProjectNotFoundException
+import com.depgraph.exception.ServiceNotFoundException
+import org.springframework.cache.annotation.CacheEvict
+import java.time.Instant
 import com.depgraph.repository.DependencyRepository
 import com.depgraph.repository.ProjectRepository
 import com.depgraph.repository.ServiceRepository
@@ -147,6 +150,28 @@ class GraphService(
             },
             relatedConfig = emptyList(),
         )
+    }
+
+    fun listServicesByProject(projectId: String): List<ServiceResponse> {
+        if (!projectRepository.existsById(projectId)) {
+            throw ProjectNotFoundException(projectId)
+        }
+        return serviceRepository.findAllByProjectId(projectId)
+            .map { ServiceResponse.from(it) }
+    }
+
+    @Transactional
+    @CacheEvict("dependency-graph", key = "#projectId")
+    fun renameService(projectId: String, serviceId: String, request: RenameServiceRequest): com.depgraph.domain.Service {
+        val service = serviceRepository.findById(serviceId)
+            .orElseThrow { ServiceNotFoundException(serviceId) }
+
+        if (service.project.id != projectId) {
+            throw ServiceNotFoundException(serviceId)
+        }
+
+        val updated = service.copy(name = request.name, updatedAt = Instant.now())
+        return serviceRepository.save(updated)
     }
 
     private fun parseDetail(detail: String?): Map<String, String> {

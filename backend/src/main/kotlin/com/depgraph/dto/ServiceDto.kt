@@ -10,6 +10,8 @@ data class ServiceResponse(
     val name: String,
     val path: String?,
     val techStack: TechStack,
+    val repoId: String?,
+    val repoUrl: String?,
     val createdAt: Instant,
     val updatedAt: Instant,
 ) {
@@ -17,12 +19,15 @@ data class ServiceResponse(
         fun from(service: Service) = ServiceResponse(
             id = service.id ?: "",
             projectId = service.project.id ?: "",
-
             name = service.name,
             path = service.path,
             techStack = service.techStack,
+            repoId = service.repo?.id,
+            repoUrl = service.repo?.gitUrl,
             createdAt = service.createdAt,
             updatedAt = service.updatedAt,
         )
     }
 }
+
+data class RenameServiceRequest(val name: String)
