@@ -60,15 +60,9 @@ export const NodeTooltip: React.FC<NodeTooltipProps> = ({ node, x, y }) => {
           </div>
         )}
         <div className="flex justify-between pt-1 border-t border-[var(--tooltip-border)]">
-          <span>발신 의존성</span>
+          <span>의존성 수</span>
           <span className="font-medium text-[var(--text-primary)]">
-            {node.dependencyCount.outgoing}
-          </span>
-        </div>
-        <div className="flex justify-between">
-          <span>수신 의존성</span>
-          <span className="font-medium text-[var(--text-primary)]">
-            {node.dependencyCount.incoming}
+            {node.dependencyCount}
           </span>
         </div>
         {node.pinned && (

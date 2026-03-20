@@ -115,20 +115,12 @@ export const ServiceDetailPopup: React.FC<ServiceDetailPopupProps> = ({
           </div>
         )}
 
-        {/* Dependency counts */}
-        <div className="grid grid-cols-2 gap-2">
-          <div className="bg-[var(--surface-2)] rounded-lg px-3 py-2 text-center">
-            <div className="text-lg font-bold text-[var(--text-primary)]">
-              {node.dependencyCount.outgoing}
-            </div>
-            <div className="text-[10px] text-[var(--text-muted)]">Outgoing</div>
+        {/* Dependency count */}
+        <div className="bg-[var(--surface-2)] rounded-lg px-3 py-2 text-center">
+          <div className="text-lg font-bold text-[var(--text-primary)]">
+            {node.dependencyCount}
           </div>
-          <div className="bg-[var(--surface-2)] rounded-lg px-3 py-2 text-center">
-            <div className="text-lg font-bold text-[var(--text-primary)]">
-              {node.dependencyCount.incoming}
-            </div>
-            <div className="text-[10px] text-[var(--text-muted)]">Incoming</div>
-          </div>
+          <div className="text-[10px] text-[var(--text-muted)]">Dependencies</div>
         </div>
       </div>
     </div>

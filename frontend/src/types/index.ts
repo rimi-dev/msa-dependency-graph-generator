@@ -27,7 +27,7 @@ export interface ServiceNode {
   displayName: string;
   language: string;
   framework?: string;
-  dependencyCount: { outgoing: number; incoming: number };
+  dependencyCount: number;
   repoId?: string;
   repoUrl?: string;
 }
@@ -177,7 +177,7 @@ export interface D3Node extends d3.SimulationNodeDatum {
   displayName: string;
   language: string;
   framework?: string;
-  dependencyCount: { outgoing: number; incoming: number };
+  dependencyCount: number;
   repoId?: string;
   repoUrl?: string;
   pinned?: boolean;
