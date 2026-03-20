@@ -34,7 +34,7 @@ class GotHttpAnalyzer : AnalyzerPlugin {
         val targetFiles = context.files.filter { it.language in supportedLanguages }
 
         targetFiles.forEach { file ->
-            // Match got.METHOD("url") calls
+            // got.METHOD("url") 호출 매칭
             gotMethodPattern.findAll(file.content).forEach { match ->
                 val method = match.groupValues[1].uppercase()
                 val url = match.groupValues[2]
@@ -55,7 +55,7 @@ class GotHttpAnalyzer : AnalyzerPlugin {
                 )
             }
 
-            // Match got("url") direct calls
+            // got("url") 직접 호출 매칭
             gotDirectPattern.findAll(file.content).forEach { match ->
                 val url = match.groupValues[1]
                 val target = ServiceNameResolver.resolveFromUrl(url, context.envVariables) ?: return@forEach

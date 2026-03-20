@@ -34,7 +34,7 @@ class FetchHttpAnalyzer : AnalyzerPlugin {
         val targetFiles = context.files.filter { it.language in supportedLanguages }
 
         targetFiles.forEach { file ->
-            // First extract fetch calls with explicit method option
+            // 먼저 명시적 method 옵션이 있는 fetch 호출 추출
             val withMethodMatches = fetchWithMethodPattern.findAll(file.content).toList()
             val withMethodRanges = withMethodMatches.map { it.range }
 
@@ -58,7 +58,7 @@ class FetchHttpAnalyzer : AnalyzerPlugin {
                 )
             }
 
-            // Then match simple fetch calls (skip those already matched above)
+            // 이후 단순 fetch 호출 매칭 (위에서 이미 매칭된 것은 제외)
             fetchPattern.findAll(file.content)
                 .filter { match -> withMethodRanges.none { it.contains(match.range.first) } }
                 .forEach { match ->

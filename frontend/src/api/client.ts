@@ -10,7 +10,7 @@ const apiClient = axios.create({
   },
 });
 
-// Request interceptor
+// 요청 인터셉터
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('auth_token');
@@ -22,7 +22,7 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor
+// 응답 인터셉터
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {

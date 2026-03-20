@@ -49,7 +49,7 @@ class NestJsClientAnalyzer : AnalyzerPlugin {
         """(?:private|protected|public)\s+(?:readonly\s+)?(\w+)\s*:\s*HttpService""",
     )
 
-    // ClientProxy.send('pattern', data) or ClientProxy.emit('pattern', data)
+    // ClientProxy.send('pattern', data) 또는 ClientProxy.emit('pattern', data)
     private val clientProxySendPattern = Regex(
         """(\w+)\s*\.\s*(send|emit)\s*\(\s*(?:\{[^}]*cmd\s*:\s*['"`]([^'"`]+)['"`][^}]*\}|['"`]([^'"`]+)['"`])""",
     )

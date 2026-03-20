@@ -31,7 +31,7 @@ class GitCloneService(
                 .setDirectory(targetDir.toFile())
                 .setDepth(1)
 
-            // GitHub requires a CredentialsProvider even for public repos via HTTPS
+            // GitHub은 HTTPS를 통한 public 레포에도 CredentialsProvider가 필요함
             val credentials = if (githubToken != null) {
                 log.info { "Using GitHub token for authenticated clone" }
                 UsernamePasswordCredentialsProvider("token", githubToken)

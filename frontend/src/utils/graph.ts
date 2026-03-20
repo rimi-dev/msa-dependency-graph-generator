@@ -69,8 +69,8 @@ export const applyDagreLayout = (
   width: number,
   height: number
 ): void => {
-  // Simple hierarchical layout without dagre dependency
-  // Build adjacency to find levels
+  // dagre 의존성 없이 간단한 계층적 레이아웃 구현
+  // 레벨을 찾기 위한 인접 관계 구성
   const nodeMap = new Map(nodes.map((n) => [n.id, n]));
   const inDegree = new Map(nodes.map((n) => [n.id, 0]));
 
@@ -79,7 +79,7 @@ export const applyDagreLayout = (
     inDegree.set(targetId, (inDegree.get(targetId) ?? 0) + 1);
   });
 
-  // Topological sort-based level assignment
+  // 위상 정렬 기반 레벨 할당
   const levels = new Map<string, number>();
   const queue: string[] = [];
 
@@ -107,12 +107,12 @@ export const applyDagreLayout = (
     });
   }
 
-  // Assign remaining nodes to level 0
+  // 나머지 노드를 레벨 0으로 할당
   nodes.forEach((n) => {
     if (!levels.has(n.id)) levels.set(n.id, 0);
   });
 
-  // Group by level
+  // 레벨별 그룹핑
   const levelGroups = new Map<number, string[]>();
   levels.forEach((level, id) => {
     if (!levelGroups.has(level)) levelGroups.set(level, []);
@@ -144,7 +144,7 @@ export const applyLayout = (
   height: number,
   simulation: d3.Simulation<D3Node, D3Link>
 ): void => {
-  // Unpin all nodes first
+  // 먼저 모든 노드 고정 해제
   nodes.forEach((n) => {
     if (!n.pinned) {
       n.fx = undefined;
@@ -159,7 +159,7 @@ export const applyLayout = (
     applyDagreLayout(nodes, links, width, height);
     simulation.alpha(0).stop();
   } else {
-    // Force layout - unpin and restart
+    // Force 레이아웃 - 고정 해제 후 재시작
     nodes.forEach((n) => {
       if (!n.pinned) {
         n.fx = undefined;

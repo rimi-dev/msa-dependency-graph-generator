@@ -162,7 +162,7 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthentica
         setShowCreateProject(false);
       }
     } catch {
-      // Ignore
+      // 무시
     }
   }, [newProjectName]);
 

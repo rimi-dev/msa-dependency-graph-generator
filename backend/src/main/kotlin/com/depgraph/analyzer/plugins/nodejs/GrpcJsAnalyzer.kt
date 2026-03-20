@@ -44,11 +44,11 @@ class GrpcJsAnalyzer : AnalyzerPlugin {
         val targetFiles = context.files.filter { it.language in supportedLanguages }
 
         targetFiles.forEach { file ->
-            // Only process files that import @grpc/grpc-js
+            // @grpc/grpc-js를 import하는 파일만 처리
             val hasGrpcImport = grpcImportPattern.containsMatchIn(file.content)
 
             if (hasGrpcImport) {
-                // Match gRPC client instantiations
+                // gRPC 클라이언트 인스턴스 생성 매칭
                 grpcClientPattern.findAll(file.content).forEach { match ->
                     val clientClass = match.groupValues[1]
                     val address = match.groupValues[2]
@@ -70,7 +70,7 @@ class GrpcJsAnalyzer : AnalyzerPlugin {
                     )
                 }
 
-                // Match proto file imports
+                // proto 파일 import 매칭
                 protoImportPattern.findAll(file.content).forEach { match ->
                     val protoPath = match.groupValues[1]
                     val protoName = protoPath.substringAfterLast("/").removeSuffix(".proto")

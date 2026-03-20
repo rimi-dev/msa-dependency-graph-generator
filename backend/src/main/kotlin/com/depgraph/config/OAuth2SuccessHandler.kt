@@ -35,7 +35,7 @@ class OAuth2SuccessHandler(
         val email = attributes["email"] as? String
         val avatarUrl = attributes["avatar_url"] as? String
 
-        // Extract GitHub access token from the authorized client
+        // 인가된 클라이언트에서 GitHub 액세스 토큰 추출
         val githubAccessToken = extractGithubAccessToken(authentication)
 
         val user = userRepository.findByGithubId(githubId).orElse(null)?.apply {

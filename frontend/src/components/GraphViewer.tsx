@@ -54,11 +54,11 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({
   const [tooltip, setTooltip] = useState<TooltipState>({ visible: false, x: 0, y: 0, content: null });
   const [contextMenu, setContextMenu] = useState<ContextMenuState>({ visible: false, x: 0, y: 0, nodeId: null });
 
-  // Mutable copies tracked inside D3
+  // D3 내부에서 추적하는 가변 복사본
   const nodesRef = useRef<D3Node[]>([]);
   const linksRef = useRef<D3Link[]>([]);
 
-  // Filtered nodes/links based on depth filter and protocol filter
+  // depth 필터 및 프로토콜 필터 기반으로 필터링된 노드/링크
   const { visibleNodes, visibleLinks } = useMemo(() => {
     let filteredNodes = initialNodes;
     let filteredLinks = initialLinks.filter((l) => protocolFilter.has(l.protocol));
@@ -90,7 +90,7 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({
     setTooltip((prev) => ({ ...prev, visible: false }));
   }, []);
 
-  // Forward ref so buildGraph can call fitAll without circular dependency
+  // 순환 의존성 없이 buildGraph에서 fitAll을 호출하기 위한 forward ref
   const fitAllRef = useRef<(w?: number, h?: number) => void>(() => {});
 
   // ─── D3 Setup ──────────────────────────────────────────────────────────────
@@ -103,7 +103,7 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({
     const width = container.clientWidth;
     const height = container.clientHeight;
 
-    // Deep clone to avoid mutating props
+    // props 변이를 방지하기 위한 깊은 복사
     const nodes: D3Node[] = visibleNodes.map((n) => {
       const existing = nodesRef.current.find((e) => e.id === n.id);
       return existing
@@ -115,14 +115,14 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({
     nodesRef.current = nodes;
     linksRef.current = links;
 
-    // Stop previous simulation
+    // 이전 시뮬레이션 중지
     simulationRef.current?.stop();
 
     d3.select(svg).selectAll('*').remove();
 
     const defs = d3.select(svg).append('defs');
 
-    // Arrow markers for each protocol
+    // 각 프로토콜별 화살표 마커
     const protocols: Protocol[] = ['HTTP'];
     protocols.forEach((p) => {
       const color = getProtocolColor(p);
@@ -140,7 +140,7 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({
         .attr('fill', color)
         .attr('opacity', 0.85);
 
-      // Dimmed version
+      // 흐린 버전
       defs
         .append('marker')
         .attr('id', `arrow-${p}-dim`)
@@ -159,7 +159,7 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({
     const g = d3.select(svg).append('g').attr('class', 'graph-root');
     gRef.current = g;
 
-    // Zoom behavior
+    // 줌 동작
     const zoom = d3
       .zoom<SVGSVGElement, unknown>()
       .scaleExtent([ZOOM_MIN, ZOOM_MAX])
@@ -170,7 +170,7 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({
     zoomRef.current = zoom;
     d3.select(svg).call(zoom);
 
-    // Links
+    // 링크
     const linkG = g.append('g').attr('class', 'links');
     const linkSelection = linkG
       .selectAll<SVGLineElement, D3Link>('line')
@@ -199,7 +199,7 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({
         onEdgeClick(d);
       });
 
-    // Nodes
+    // 노드
     const nodeG = g.append('g').attr('class', 'nodes');
     const nodeSelection = nodeG
       .selectAll<SVGGElement, D3Node>('g.node')
@@ -209,7 +209,7 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({
       .attr('data-id', (d) => d.id)
       .attr('cursor', 'grab');
 
-    // Node circles
+    // 노드 원
     nodeSelection
       .append('circle')
       .attr('r', NODE_RADIUS)
@@ -218,11 +218,11 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({
       .attr('stroke-width', 2)
       .attr('filter', 'url(#node-shadow)');
 
-    // Node shadow filter
+    // 노드 그림자 필터
     const shadowFilter = defs.append('filter').attr('id', 'node-shadow').attr('x', '-50%').attr('y', '-50%').attr('width', '200%').attr('height', '200%');
     shadowFilter.append('feDropShadow').attr('dx', 0).attr('dy', 2).attr('stdDeviation', 4).attr('flood-opacity', 0.2);
 
-    // Node labels (display name - multiline)
+    // 노드 라벨 (표시명 - 여러 줄)
     nodeSelection.each(function (d) {
       const el = d3.select(this);
       const words = d.displayName.split(/[\s-_]/);
@@ -244,7 +244,7 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({
       });
     });
 
-    // Node language badge
+    // 노드 언어 배지
     nodeSelection
       .append('text')
       .attr('text-anchor', 'middle')
@@ -255,7 +255,7 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({
       .attr('pointer-events', 'none')
       .text((d) => d.language);
 
-    // Pin indicator
+    // 고정 표시기
     nodeSelection
       .append('text')
       .attr('class', 'pin-icon')
@@ -265,11 +265,11 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({
       .attr('pointer-events', 'none')
       .text((d) => (d.pinned ? '📌' : ''));
 
-    // Event handlers
+    // 이벤트 핸들러
     nodeSelection
       .on('mouseenter', (event: MouseEvent, d: D3Node) => {
         const connectedEdges = getConnectedEdgeIds(d.id, links);
-        // Highlight connected
+        // 연결된 엣지 하이라이트
         linkSelection
           .attr('stroke-opacity', (l) => connectedEdges.has(l.id) ? 1 : 0.15)
           .attr('marker-end', (l) => connectedEdges.has(l.id) ? `url(#arrow-${l.protocol})` : `url(#arrow-${l.protocol}-dim)`);
@@ -285,7 +285,7 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({
         setTooltip((prev) => ({ ...prev, x: event.clientX, y: event.clientY }));
       })
       .on('mouseleave', (event: MouseEvent) => {
-        // Restore
+        // 원래 상태로 복원
         if (!selectedNodeId) {
           linkSelection.attr('stroke-opacity', 0.8).attr('marker-end', (l) => `url(#arrow-${l.protocol})`);
         }
@@ -333,7 +333,7 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({
         }
       });
 
-    // Drag behavior
+    // 드래그 동작
     const drag = d3
       .drag<SVGGElement, D3Node>()
       .on('start', function (event, d) {
@@ -354,7 +354,7 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({
           simulationRef.current?.alphaTarget(0);
         }
         d.pinned = true;
-        // Update pin icon
+        // 고정 아이콘 업데이트
         d3.select(svgRef.current)
           .selectAll<SVGGElement, D3Node>('g.node')
           .filter((n) => n.id === d.id)
@@ -364,7 +364,7 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({
 
     nodeSelection.call(drag);
 
-    // Simulation
+    // 시뮬레이션
     const simulation = createForceSimulation(nodes, links, width, height);
     simulationRef.current = simulation;
 
@@ -378,12 +378,12 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({
       nodeSelection.attr('transform', (d) => `translate(${d.x ?? 0},${d.y ?? 0})`);
     });
 
-    // Apply initial layout if not force
+    // force가 아닌 경우 초기 레이아웃 적용
     if (layout !== 'force') {
       applyLayout(nodes, links, layout, width, height, simulation);
     }
 
-    // Initial zoom to fit
+    // 초기 화면 맞춤 줌
     setTimeout(() => fitAllRef.current(width, height), 100);
 
     return () => simulation.stop();
@@ -412,7 +412,7 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({
       .call(zoomRef.current.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
   }, []);
 
-  // Keep forward ref in sync
+  // forward ref 동기화 유지
   useEffect(() => {
     fitAllRef.current = fitAll;
   }, [fitAll]);
@@ -464,12 +464,12 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({
     }
   }, [hideContextMenu]);
 
-  // Build graph when data changes
+  // 데이터 변경 시 그래프 재구성
   useEffect(() => {
     buildGraph();
   }, [buildGraph]);
 
-  // Handle window resize
+  // 윈도우 리사이즈 처리
   useEffect(() => {
     const handleResize = () => {
       if (simulationRef.current) {
@@ -486,7 +486,7 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Close context menu on outside click
+  // 외부 클릭 시 컨텍스트 메뉴 닫기
   useEffect(() => {
     const handler = () => hideContextMenu();
     document.addEventListener('click', handler);
@@ -495,14 +495,14 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({
 
   return (
     <div className="relative flex flex-col h-full bg-[var(--graph-bg)] overflow-hidden">
-      {/* Mock data banner */}
+      {/* 목 데이터 배너 */}
       {isMockData && (
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs px-4 py-1.5 rounded-full font-medium backdrop-blur-sm shadow">
           데모 데이터 표시 중 — 분석을 실행하면 실제 데이터로 교체됩니다
         </div>
       )}
 
-      {/* Depth filter indicator */}
+      {/* Depth 필터 표시기 */}
       {depthFilterNodeId && (
         <div className="absolute top-3 left-3 z-20 flex items-center gap-2 bg-blue-500/10 border border-blue-500/30 text-blue-600 dark:text-blue-400 text-xs px-3 py-1.5 rounded-full font-medium backdrop-blur-sm shadow">
           <span>1-depth 필터: {visibleNodes.find((n) => n.id === depthFilterNodeId)?.displayName}</span>
@@ -515,7 +515,7 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({
         </div>
       )}
 
-      {/* SVG Graph */}
+      {/* SVG 그래프 */}
       <div ref={containerRef} className="flex-1 overflow-hidden">
         <svg
           ref={svgRef}
@@ -528,7 +528,7 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({
         />
       </div>
 
-      {/* Toolbar */}
+      {/* 툴바 */}
       <div className="flex-shrink-0 border-t border-[var(--border)] bg-[var(--surface-1)] px-4 py-2.5">
         <Toolbar
           zoom={currentZoom}
@@ -545,7 +545,7 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({
         />
       </div>
 
-      {/* Tooltips */}
+      {/* 툴팁 */}
       {tooltip.visible && tooltip.content && (
         <>
           {tooltip.content.type === 'node' && (
@@ -557,7 +557,7 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({
         </>
       )}
 
-      {/* Context Menu */}
+      {/* 컨텍스트 메뉴 */}
       {contextMenu.visible && contextMenu.nodeId && (
         <div
           style={{ position: 'fixed', left: contextMenu.x, top: contextMenu.y, zIndex: 9999 }}

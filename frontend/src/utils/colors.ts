@@ -42,7 +42,7 @@ export const getProtocolStrokeDash = (protocol: string): string => {
 };
 
 export const getEdgeWidth = (count: number): number => {
-  // Map sourceLocationCount (1–10+) to stroke width (1.5px–5px)
+  // sourceLocationCount(1~10+)를 선 두께(1.5px~5px)로 매핑
   const min = 1.5;
   const max = 5;
   const clampedCount = Math.min(Math.max(count, 1), 10);

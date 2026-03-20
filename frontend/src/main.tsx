@@ -4,7 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import './index.css';
 
-// Initialize theme before first render to prevent flash
+// 첫 렌더링 전에 테마를 초기화하여 깜빡임 방지
 const stored = localStorage.getItem('msa-graph-theme');
 const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 const theme = stored ?? (prefersDark ? 'dark' : 'light');
