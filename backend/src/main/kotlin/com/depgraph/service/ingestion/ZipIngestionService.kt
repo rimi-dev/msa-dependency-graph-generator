@@ -35,6 +35,20 @@ class ZipIngestionService(
         return targetDir
     }
 
+    fun extractFromPath(zipPath: Path): Path {
+        val targetDir = Path.of(workDirBase, "upload_${System.currentTimeMillis()}")
+        Files.createDirectories(targetDir)
+
+        try {
+            log.info { "Extracting ZIP from path to $targetDir" }
+            extractZip(zipPath, targetDir)
+        } catch (ex: Exception) {
+            throw IngestionException("Failed to extract ZIP: ${ex.message}", ex)
+        }
+
+        return targetDir
+    }
+
     private fun extractZip(zipPath: Path, targetDir: Path) {
         ZipFile.builder()
             .setFile(zipPath.toFile())

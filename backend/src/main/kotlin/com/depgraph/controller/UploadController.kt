@@ -9,6 +9,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.multipart.MultipartFile
+import java.nio.file.Files
 
 private val log = KotlinLogging.logger {}
 
@@ -33,8 +34,12 @@ class UploadController(
 
         log.info { "ZIP 업로드 수신: project=$projectId (${file.size} bytes)" }
 
+        // @Async에서 MultipartFile 접근 불가 — 임시 파일로 복사
+        val tempZip = Files.createTempFile("depgraph_upload_", ".zip")
+        file.transferTo(tempZip)
+
         val job = jobService.createJob()
-        asyncAnalysisRunner.runZipAnalysisForProject(projectId, job.id, file)
+        asyncAnalysisRunner.runZipAnalysisForProject(projectId, job.id, tempZip)
 
         return ResponseEntity.accepted().body(
             ApiResponse.success(

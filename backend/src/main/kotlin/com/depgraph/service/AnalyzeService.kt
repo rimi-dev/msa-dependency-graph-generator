@@ -64,10 +64,14 @@ class AnalyzeService(
         val fileName = file.originalFilename?.removeSuffix(".zip") ?: "uploaded-project"
         val slug = fileName.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-')
 
+        // @Async에서 MultipartFile 접근 불가 — 임시 파일로 복사
+        val tempZip = java.nio.file.Files.createTempFile("depgraph_upload_", ".zip")
+        file.transferTo(tempZip)
+
         val project = findOrCreateProject(fileName, slug)
         val job = jobService.createJob()
 
-        asyncAnalysisRunner.runZipAnalysis(project.id, job.id, file)
+        asyncAnalysisRunner.runZipAnalysis(project.id, job.id, tempZip)
 
         return AnalyzeResponse(jobId = job.id, message = "ZIP analysis started for $fileName")
     }

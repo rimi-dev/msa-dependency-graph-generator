@@ -119,6 +119,31 @@ class IngestionService(
         }
     }
 
+    /**
+     * Path 기반 ZIP 분석 — @Async에서 MultipartFile 대신 사용
+     */
+    fun ingestZipFromPath(projectId: String, zipPath: java.nio.file.Path) {
+        log.info { "Starting ZIP ingestion from path for project: $projectId" }
+        projectService.updateStatus(projectId, ProjectStatus.INGESTING)
+
+        try {
+            val workDir = zipIngestionService.extractFromPath(zipPath)
+
+            projectService.updateStatus(projectId, ProjectStatus.ANALYZING)
+            analysisOrchestrator.analyze(projectId, workDir)
+            projectService.updateStatus(projectId, ProjectStatus.READY)
+            log.info { "ZIP ingestion completed for project: $projectId" }
+        } catch (ex: IngestionException) {
+            log.error(ex) { "ZIP ingestion failed for project: $projectId" }
+            projectService.updateStatus(projectId, ProjectStatus.ERROR)
+            throw ex
+        } catch (ex: Exception) {
+            log.error(ex) { "Unexpected error during ZIP ingestion for project: $projectId" }
+            projectService.updateStatus(projectId, ProjectStatus.ERROR)
+            throw IngestionException("ZIP ingestion failed: ${ex.message}", ex)
+        }
+    }
+
     private fun validateGitUrl(url: String) {
         val validPrefixes = listOf("https://", "http://", "git@", "ssh://")
         if (validPrefixes.none { url.startsWith(it) }) {

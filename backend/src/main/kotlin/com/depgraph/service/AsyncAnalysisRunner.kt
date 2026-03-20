@@ -6,7 +6,8 @@ import com.depgraph.service.ingestion.IngestionService
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Service
-import org.springframework.web.multipart.MultipartFile
+import java.nio.file.Files
+import java.nio.file.Path
 
 private val logger = KotlinLogging.logger {}
 
@@ -89,33 +90,37 @@ class AsyncAnalysisRunner(
     }
 
     @Async
-    fun runZipAnalysis(projectId: String, jobId: String, file: MultipartFile) {
+    fun runZipAnalysis(projectId: String, jobId: String, tempZipPath: Path) {
         try {
             val project = projectService.updateStatus(projectId, ProjectStatus.INGESTING)
             jobService.updateJobStep(jobId, AnalysisStep.CLONING, 10, "ZIP 파일 추출 중...", project)
 
-            ingestionService.ingestZip(projectId, file)
+            ingestionService.ingestZipFromPath(projectId, tempZipPath)
 
             jobService.updateJobStep(jobId, AnalysisStep.COMPLETED, 100, "분석 완료")
         } catch (e: Exception) {
             logger.error(e) { "ZIP analysis failed for job $jobId" }
             jobService.failJob(jobId, e.message ?: "Unknown error")
+        } finally {
+            Files.deleteIfExists(tempZipPath)
         }
     }
 
     @Async
-    fun runZipAnalysisForProject(projectId: String, jobId: String, file: MultipartFile) {
+    fun runZipAnalysisForProject(projectId: String, jobId: String, tempZipPath: Path) {
         try {
             val project = projectService.updateStatus(projectId, ProjectStatus.INGESTING)
             jobService.updateJobStep(jobId, AnalysisStep.CLONING, 10, "ZIP 파일 추출 중...", project)
 
-            ingestionService.ingestZip(projectId, file)
+            ingestionService.ingestZipFromPath(projectId, tempZipPath)
 
             projectService.updateStatus(projectId, ProjectStatus.READY)
             jobService.updateJobStep(jobId, AnalysisStep.COMPLETED, 100, "분석 완료")
         } catch (e: Exception) {
             logger.error(e) { "ZIP analysis failed for project $projectId, job $jobId" }
             jobService.failJob(jobId, e.message ?: "Unknown error")
+        } finally {
+            Files.deleteIfExists(tempZipPath)
         }
     }
 }
