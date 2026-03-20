@@ -24,31 +24,62 @@ class GitCloneService(
 
         log.info { "Cloning $gitUrl (branch: $branch) into $targetDir" }
 
+        if (githubToken != null) {
+            cloneWithJGit(gitUrl, branch, targetDir, githubToken)
+        } else {
+            // public 레포: JGit 시도 후 실패하면 git CLI fallback
+            try {
+                cloneWithJGit(gitUrl, branch, targetDir, null)
+            } catch (ex: Exception) {
+                log.warn { "JGit clone 실패, git CLI로 재시도: ${ex.message}" }
+                // JGit이 만든 불완전한 디렉토리 정리
+                targetDir.toFile().deleteRecursively()
+                Files.createDirectories(targetDir)
+                cloneWithGitCli(gitUrl, branch, targetDir)
+            }
+        }
+
+        return targetDir
+    }
+
+    private fun cloneWithJGit(gitUrl: String, branch: String, targetDir: Path, githubToken: String?) {
         try {
             val cloneCommand = Git.cloneRepository()
                 .setURI(gitUrl)
                 .setBranch(branch)
                 .setDirectory(targetDir.toFile())
-                .setDepth(1)
 
-            // GitHub은 HTTPS를 통한 public 레포에도 CredentialsProvider가 필요함
-            val credentials = if (githubToken != null) {
-                log.info { "Using GitHub token for authenticated clone" }
-                UsernamePasswordCredentialsProvider("token", githubToken)
-            } else {
-                UsernamePasswordCredentialsProvider("", "")
+            if (githubToken != null) {
+                cloneCommand.setCredentialsProvider(
+                    UsernamePasswordCredentialsProvider("token", githubToken)
+                )
+                cloneCommand.setDepth(1)
             }
-            cloneCommand.setCredentialsProvider(credentials)
 
             cloneCommand.call()
                 .use { git ->
-                    log.info { "Successfully cloned: ${git.repository.directory}" }
+                    log.info { "JGit으로 클론 완료: ${git.repository.directory}" }
                 }
         } catch (ex: GitAPIException) {
             throw IngestionException("Failed to clone repository: ${ex.message}", ex)
         }
+    }
 
-        return targetDir
+    private fun cloneWithGitCli(gitUrl: String, branch: String, targetDir: Path) {
+        val command = listOf("git", "clone", "--depth", "1", "--branch", branch, gitUrl, targetDir.toString())
+        log.info { "git CLI로 클론 실행: ${command.joinToString(" ")}" }
+
+        val process = ProcessBuilder(command)
+            .redirectErrorStream(true)
+            .start()
+
+        val output = process.inputStream.bufferedReader().readText()
+        val exitCode = process.waitFor()
+
+        if (exitCode != 0) {
+            throw IngestionException("git CLI clone 실패 (exit=$exitCode): $output")
+        }
+        log.info { "git CLI로 클론 완료: $targetDir" }
     }
 
     private fun generateDirName(gitUrl: String): String {
