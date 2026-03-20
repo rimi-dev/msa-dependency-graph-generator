@@ -25,6 +25,7 @@ interface GraphViewerProps {
   links: D3Link[];
   isMockData: boolean;
   onEdgeClick: (edge: D3Link) => void;
+  onNodeClick?: (node: D3Node) => void;
 }
 
 const ZOOM_MIN = 0.1;
@@ -36,6 +37,7 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({
   links: initialLinks,
   isMockData,
   onEdgeClick,
+  onNodeClick,
 }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -321,6 +323,7 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({
           }
           return newId;
         });
+        onNodeClick?.(d);
       })
       .on('dblclick', (_event: MouseEvent, d: D3Node) => {
         setDepthFilterNodeId((prev) => (prev === d.id ? null : d.id));
@@ -386,7 +389,7 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({
     setTimeout(() => fitAllRef.current(width, height), 100);
 
     return () => simulation.stop();
-  }, [visibleNodes, visibleLinks, layout, lockNodes, selectedNodeId, onEdgeClick, hideTooltip]);
+  }, [visibleNodes, visibleLinks, layout, lockNodes, selectedNodeId, onEdgeClick, onNodeClick, hideTooltip]);
 
   const fitAll = useCallback((w?: number, h?: number) => {
     const svg = svgRef.current;

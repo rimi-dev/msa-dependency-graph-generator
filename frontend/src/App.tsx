@@ -4,14 +4,15 @@ import { Layout } from '@/components/Layout';
 import { RepoInput } from '@/components/RepoInput';
 import { GraphViewer } from '@/components/GraphViewer';
 import { CodePreviewModal } from '@/components/CodePreviewModal';
+import { ServiceDetailPopup } from '@/components/ServiceDetailPopup';
 import { LoginPage } from '@/components/LoginPage';
 import { OAuthCallback } from '@/components/OAuthCallback';
 import { useAnalysis } from '@/hooks/useAnalysis';
 import { useGraph } from '@/hooks/useGraph';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
-import type { D3Link, ProjectRepo } from '@/types';
-import { listProjects, getProjectDetail, addRepo, removeRepo as removeRepoApi } from '@/api/projects';
+import type { D3Link, D3Node, ProjectRepo, ServiceInfo } from '@/types';
+import { listProjects, getProjectDetail, addRepo, removeRepo as removeRepoApi, renameService, listServices } from '@/api/projects';
 import type { Project } from '@/types';
 
 const App: React.FC = () => {
@@ -46,7 +47,9 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthentica
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectRepos, setProjectRepos] = useState<ProjectRepo[]>([]);
+  const [services, setServices] = useState<ServiceInfo[]>([]);
   const [selectedEdge, setSelectedEdge] = useState<D3Link | null>(null);
+  const [selectedNode, setSelectedNode] = useState<D3Node | null>(null);
 
   const analysis = useAnalysis();
   const graph = useGraph(selectedProjectId);
@@ -64,7 +67,7 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthentica
       });
   }, []);
 
-  // Load repos when project is selected
+  // Load repos and services when project is selected
   useEffect(() => {
     if (selectedProjectId) {
       getProjectDetail(selectedProjectId)
@@ -76,8 +79,15 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthentica
           }
         })
         .catch(() => setProjectRepos([]));
+      listServices(selectedProjectId)
+        .then((res) => {
+          if (res.success) setServices(res.data);
+          else setServices([]);
+        })
+        .catch(() => setServices([]));
     } else {
       setProjectRepos([]);
+      setServices([]);
     }
   }, [selectedProjectId]);
 
@@ -103,10 +113,10 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthentica
   }, [analysis.completedProjectId]);
 
   const handleAddRepo = useCallback(
-    async (gitUrl: string) => {
+    async (gitUrl: string, serviceId?: string) => {
       if (!selectedProjectId) return;
       try {
-        const res = await addRepo(selectedProjectId, { gitUrl });
+        const res = await addRepo(selectedProjectId, { gitUrl, serviceId });
         if (res.success) {
           setProjectRepos((prev) => [...prev, res.data]);
         }
@@ -130,6 +140,19 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthentica
     [selectedProjectId]
   );
 
+  const handleRenameService = useCallback(
+    async (serviceId: string, newName: string) => {
+      if (!selectedProjectId) return;
+      try {
+        await renameService(selectedProjectId, serviceId, newName);
+        graph.loadGraph(selectedProjectId);
+      } catch {
+        // Ignore
+      }
+    },
+    [selectedProjectId, graph]
+  );
+
   const sidebar = (
     <>
       <RepoInput
@@ -146,6 +169,7 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthentica
         onReset={analysis.reset}
         selectedProjectId={selectedProjectId}
         repos={projectRepos}
+        services={services}
       />
 
       {/* Project List */}
@@ -299,6 +323,7 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthentica
           links={graph.links}
           isMockData={graph.isMockData}
           onEdgeClick={(edge: D3Link) => setSelectedEdge(edge)}
+          onNodeClick={(node: D3Node) => setSelectedNode(node)}
         />
       )}
 
@@ -308,6 +333,14 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthentica
         isDark={isDark}
         onClose={() => setSelectedEdge(null)}
       />
+
+      {selectedNode && (
+        <ServiceDetailPopup
+          node={selectedNode}
+          onClose={() => setSelectedNode(null)}
+          onRename={handleRenameService}
+        />
+      )}
     </Layout>
   );
 };
