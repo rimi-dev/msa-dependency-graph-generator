@@ -329,119 +329,90 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthentica
         )}
       </div>
 
-      {/* 그래프 정보 */}
-      {graph.graphData && (
-        <div className="bg-[var(--surface-1)] border border-[var(--border)] rounded-xl p-4 shadow-sm">
-          <h2 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-3">
-            그래프 정보
-          </h2>
-          <div className="space-y-2">
-            <div className="flex justify-between text-xs">
-              <span className="text-[var(--text-secondary)]">프로젝트</span>
-              <span className="text-[var(--text-primary)] font-medium truncate max-w-[140px]">
-                {graph.graphData.metadata.projectName}
-              </span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-[var(--text-secondary)]">서비스 수</span>
-              <span className="text-[var(--text-primary)] font-medium">
-                {graph.graphData.metadata.totalNodes}
-              </span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-[var(--text-secondary)]">의존성 수</span>
-              <span className="text-[var(--text-primary)] font-medium">
-                {graph.graphData.metadata.totalEdges}
-              </span>
-            </div>
-            <div className="pt-2 border-t border-[var(--border)]">
-              <p className="text-[10px] text-[var(--text-muted)] mb-1.5">언어</p>
-              <div className="flex flex-wrap gap-1">
-                {graph.graphData.metadata.languages.map((lang) => (
-                  <span
-                    key={lang}
-                    className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--surface-2)] text-[var(--text-secondary)]"
-                  >
-                    {lang}
-                  </span>
-                ))}
-              </div>
-            </div>
-            <div className="flex justify-between text-xs pt-1">
-              <span className="text-[var(--text-muted)]">분석 시각</span>
-              <span className="text-[var(--text-muted)] text-[10px]">
-                {new Date(graph.graphData.metadata.analyzedAt).toLocaleString('ko-KR', {
-                  month: 'short',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 사용법 안내 */}
-      <div className="bg-[var(--surface-1)] border border-[var(--border)] rounded-xl p-4 shadow-sm">
-        <h2 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-3">
-          사용법
-        </h2>
-        <ul className="space-y-1.5 text-[11px] text-[var(--text-muted)]">
-          <li className="flex gap-2">
-            <span className="flex-shrink-0">🖱️</span>
-            <span>노드 호버 — 서비스 정보</span>
-          </li>
-          <li className="flex gap-2">
-            <span className="flex-shrink-0">👆</span>
-            <span>노드 클릭 — 연결 엣지 하이라이트</span>
-          </li>
-          <li className="flex gap-2">
-            <span className="flex-shrink-0">👆👆</span>
-            <span>더블클릭 — 1-depth 필터</span>
-          </li>
-          <li className="flex gap-2">
-            <span className="flex-shrink-0">✋</span>
-            <span>드래그 — 노드 이동 (핀 고정)</span>
-          </li>
-          <li className="flex gap-2">
-            <span className="flex-shrink-0">🖱️→</span>
-            <span>우클릭 — 고정 해제</span>
-          </li>
-          <li className="flex gap-2">
-            <span className="flex-shrink-0">→</span>
-            <span>엣지 클릭 — 코드 미리보기</span>
-          </li>
-          <li className="flex gap-2">
-            <span className="flex-shrink-0">⚙️</span>
-            <span>스크롤 — 줌 인/아웃</span>
-          </li>
-        </ul>
-      </div>
     </>
   );
 
   return (
     <Layout sidebar={sidebar} user={user} onLogin={onLogin} onLogout={onLogout} isAuthenticated={isAuthenticated}>
-      {graph.isLoading ? (
-        <div className="h-full flex items-center justify-center bg-[var(--graph-bg)]">
-          <div className="flex flex-col items-center gap-4 text-[var(--text-secondary)]">
-            <svg className="animate-spin w-10 h-10 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
-              <path d="M12 2a10 10 0 0 1 10 10" />
-            </svg>
-            <span className="text-sm font-medium">그래프 로딩 중...</span>
+      <div className="relative h-full">
+        {graph.isLoading ? (
+          <div className="h-full flex items-center justify-center bg-[var(--graph-bg)]">
+            <div className="flex flex-col items-center gap-4 text-[var(--text-secondary)]">
+              <svg className="animate-spin w-10 h-10 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+                <path d="M12 2a10 10 0 0 1 10 10" />
+              </svg>
+              <span className="text-sm font-medium">그래프 로딩 중...</span>
+            </div>
           </div>
+        ) : (
+          <GraphViewer
+            nodes={graph.nodes}
+            links={graph.links}
+            isMockData={graph.isMockData}
+            onEdgeClick={(edge: D3Link) => setSelectedEdge(edge)}
+            onNodeClick={(node: D3Node) => setSelectedNode(node)}
+          />
+        )}
+
+        {/* 오른쪽 상단 오버레이: 그래프 정보 + 사용법 */}
+        <div className="absolute top-3 right-3 flex flex-col gap-2 z-10 pointer-events-auto max-w-[220px]">
+          {/* 그래프 정보 */}
+          {graph.graphData && !graph.isMockData && (
+            <div className="bg-[var(--surface-1)]/90 backdrop-blur-sm border border-[var(--border)] rounded-lg px-3 py-2.5 shadow-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider">그래프 정보</span>
+              </div>
+              <div className="space-y-1">
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-[var(--text-muted)]">프로젝트</span>
+                  <span className="text-[var(--text-primary)] font-medium truncate max-w-[110px]">
+                    {graph.graphData.metadata.projectName}
+                  </span>
+                </div>
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-[var(--text-muted)]">서비스</span>
+                  <span className="text-[var(--text-primary)] font-medium">{graph.graphData.metadata.totalNodes}</span>
+                </div>
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-[var(--text-muted)]">의존성</span>
+                  <span className="text-[var(--text-primary)] font-medium">{graph.graphData.metadata.totalEdges}</span>
+                </div>
+                {graph.graphData.metadata.languages.length > 0 && (
+                  <div className="flex gap-1 flex-wrap pt-1">
+                    {graph.graphData.metadata.languages.map((lang) => (
+                      <span key={lang} className="text-[9px] px-1.5 py-0.5 rounded bg-[var(--surface-2)] text-[var(--text-secondary)]">
+                        {lang}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div className="text-[9px] text-[var(--text-muted)] pt-1">
+                  {new Date(graph.graphData.metadata.analyzedAt).toLocaleString('ko-KR', {
+                    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 사용법 (접을 수 있는 형태) */}
+          <details className="bg-[var(--surface-1)]/90 backdrop-blur-sm border border-[var(--border)] rounded-lg shadow-lg">
+            <summary className="px-3 py-2 text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider cursor-pointer select-none hover:text-[var(--text-primary)] transition-colors">
+              사용법
+            </summary>
+            <ul className="px-3 pb-2.5 space-y-1 text-[10px] text-[var(--text-muted)]">
+              <li>🖱️ 호버 — 서비스 정보</li>
+              <li>👆 클릭 — 엣지 하이라이트</li>
+              <li>👆👆 더블클릭 — 1-depth 필터</li>
+              <li>✋ 드래그 — 노드 이동</li>
+              <li>🖱️→ 우클릭 — 고정 해제</li>
+              <li>→ 엣지 클릭 — 코드 미리보기</li>
+              <li>⚙️ 스크롤 — 줌</li>
+            </ul>
+          </details>
         </div>
-      ) : (
-        <GraphViewer
-          nodes={graph.nodes}
-          links={graph.links}
-          isMockData={graph.isMockData}
-          onEdgeClick={(edge: D3Link) => setSelectedEdge(edge)}
-          onNodeClick={(node: D3Node) => setSelectedNode(node)}
-        />
-      )}
+      </div>
 
       <CodePreviewModal
         edge={selectedEdge}
