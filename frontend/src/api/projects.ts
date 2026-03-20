@@ -39,7 +39,8 @@ export const getDependencySource = async (
 export const createProject = async (
   data: CreateProjectRequest
 ): Promise<ApiResponse<Project>> => {
-  const slug = data.slug ?? data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const derived = data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const slug = data.slug || derived || `project-${Date.now()}`;
   const response = await apiClient.post<ApiResponse<Project>>('/projects', { ...data, slug });
   return response.data;
 };
