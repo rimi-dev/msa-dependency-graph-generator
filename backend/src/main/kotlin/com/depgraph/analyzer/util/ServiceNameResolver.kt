@@ -8,6 +8,11 @@ object ServiceNameResolver {
     // Patterns that indicate environment variable references in URLs
     private val envVarInUrlPattern = Regex("""\$\{?([A-Z_]+)\}?""")
 
+    // Hosts that should not be treated as service names
+    private val IGNORED_HOSTS = setOf(
+        "localhost", "127.0.0.1", "0.0.0.0", "::1",
+    )
+
     /**
      * Resolves a service name from an HTTP URL.
      * e.g. "http://account-service:3000/api/users" -> "account-service"
@@ -19,6 +24,7 @@ object ServiceNameResolver {
         return try {
             val uri = URI.create(resolvedUrl)
             val host = uri.host ?: return null
+            if (host in IGNORED_HOSTS) return null
             // Strip port if present and use first segment
             host.split(".").first().takeIf { it.isNotBlank() }
         } catch (ex: Exception) {
@@ -35,6 +41,7 @@ object ServiceNameResolver {
 
         // Handle host:port format
         val host = resolvedAddress.substringBefore(":").trim()
+        if (host in IGNORED_HOSTS) return null
         return host.split(".").first().takeIf { it.isNotBlank() && !host.startsWith("$") }
     }
 

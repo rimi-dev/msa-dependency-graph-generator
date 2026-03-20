@@ -45,10 +45,13 @@ class EnvFileDetector(
         return services
     }
 
+    private val IGNORED_HOSTS = setOf("localhost", "127.0.0.1", "0.0.0.0", "::1")
+
     private fun extractServiceFromEnvVar(key: String, value: String): DetectedService? {
         return try {
             val uri = URI.create(value)
             val host = uri.host ?: return null
+            if (host in IGNORED_HOSTS) return null
             // Use hostname as service name (e.g. account-service from http://account-service:3000)
             val serviceName = host.split(".").first()
 

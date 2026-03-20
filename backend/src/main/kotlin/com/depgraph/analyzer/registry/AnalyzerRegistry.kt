@@ -33,6 +33,11 @@ class AnalyzerRegistry(
             ".next", ".nuxt", "coverage", "__pycache__", ".gradle", "target",
         )
 
+        private val TEST_FILE_PATTERNS = setOf(
+            ".test.", ".spec.", ".mock.", ".stub.", ".e2e-spec.", ".e2e.",
+            "__test__", "__tests__", "__mock__", "__mocks__",
+        )
+
         private const val MAX_FILE_SIZE_BYTES = 1_000_000L // 1 MB
     }
 
@@ -164,6 +169,7 @@ class AnalyzerRegistry(
 
     private fun isSourceFile(path: Path): Boolean {
         val name = path.fileName.toString()
+        if (TEST_FILE_PATTERNS.any { name.contains(it) }) return false
         return SOURCE_EXTENSIONS.any { name.endsWith(it) }
     }
 
