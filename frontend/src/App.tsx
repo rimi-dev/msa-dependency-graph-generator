@@ -195,11 +195,34 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthentica
     [selectedProjectId, graph]
   );
 
+  const handleUploadZipToProject = useCallback(
+    async (projectId: string, file: File) => {
+      try {
+        const { uploadZipToProject } = await import('@/api/analysis');
+        const res = await uploadZipToProject(projectId, file);
+        if (res.success) {
+          // 분석 완료 — 그래프 리로드
+          graph.loadGraph(projectId);
+          listServices(projectId)
+            .then((r) => { if (r.success) setServices(r.data); })
+            .catch(() => {});
+          listProjects()
+            .then((r) => { if (r.success) setProjects(r.data); })
+            .catch(() => {});
+        }
+      } catch {
+        // 오류 무시
+      }
+    },
+    [graph]
+  );
+
   const sidebar = (
     <>
       <RepoInput
         onAnalyzeRepo={analysis.analyzeRepo}
         onAnalyzeZip={analysis.analyzeZip}
+        onUploadZipToProject={selectedProjectId ? handleUploadZipToProject : undefined}
         onAnalyzeAllRepos={analysis.analyzeAllRepos}
         onAddRepo={selectedProjectId ? handleAddRepo : undefined}
         onRemoveRepo={selectedProjectId ? handleRemoveRepo : undefined}

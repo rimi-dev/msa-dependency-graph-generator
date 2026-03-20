@@ -5,6 +5,7 @@ import type { AnalysisStep, ProjectRepo, ServiceInfo } from '@/types';
 interface RepoInputProps {
   onAnalyzeRepo: (url: string, projectId?: string) => void;
   onAnalyzeZip: (file: File) => void;
+  onUploadZipToProject?: (projectId: string, file: File) => void;
   onAnalyzeAllRepos?: (projectId: string) => void;
   onAddRepo?: (gitUrl: string, serviceId?: string) => void;
   services?: ServiceInfo[];
@@ -32,6 +33,7 @@ const STATUS_BADGES: Record<string, { label: string; color: string }> = {
 export const RepoInput: React.FC<RepoInputProps> = ({
   onAnalyzeRepo,
   onAnalyzeZip,
+  onUploadZipToProject,
   onAnalyzeAllRepos,
   onAddRepo,
   onRemoveRepo,
@@ -68,13 +70,16 @@ export const RepoInput: React.FC<RepoInputProps> = ({
   };
 
   const handleAnalyze = () => {
-    if (isProjectMode) {
-      // Project mode: analyze all repos
+    if (droppedFile) {
+      if (isProjectMode && onUploadZipToProject && selectedProjectId) {
+        onUploadZipToProject(selectedProjectId, droppedFile);
+      } else {
+        onAnalyzeZip(droppedFile);
+      }
+    } else if (isProjectMode) {
       if (onAnalyzeAllRepos && selectedProjectId) {
         onAnalyzeAllRepos(selectedProjectId);
       }
-    } else if (droppedFile) {
-      onAnalyzeZip(droppedFile);
     } else if (validateUrl(repoUrl)) {
       onAnalyzeRepo(repoUrl);
     }
@@ -124,7 +129,7 @@ export const RepoInput: React.FC<RepoInputProps> = ({
   };
 
   const isCompleted = step === 'COMPLETED';
-  const canStart = !isRunning && (isProjectMode ? (repos && repos.length > 0) : (!!droppedFile || !!repoUrl));
+  const canStart = !isRunning && (!!droppedFile || (isProjectMode ? (repos && repos.length > 0) : !!repoUrl));
 
   return (
     <div className="bg-[var(--surface-1)] border border-[var(--border)] rounded-xl p-4 shadow-sm">
@@ -232,59 +237,55 @@ export const RepoInput: React.FC<RepoInputProps> = ({
         </div>
       )}
 
-      {/* ZIP Drop Zone (only in non-project mode) */}
-      {!isProjectMode && (
-        <>
-          <div className="flex items-center gap-2 mb-3">
-            <div className="flex-1 h-px bg-[var(--border)]" />
-            <span className="text-xs text-[var(--text-muted)]">또는</span>
-            <div className="flex-1 h-px bg-[var(--border)]" />
-          </div>
+      {/* ZIP Drop Zone */}
+      <div className="flex items-center gap-2 mb-3">
+        <div className="flex-1 h-px bg-[var(--border)]" />
+        <span className="text-xs text-[var(--text-muted)]">또는 ZIP 업로드</span>
+        <div className="flex-1 h-px bg-[var(--border)]" />
+      </div>
 
-          <div
-            className={`relative border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-all duration-200
-              ${isDragging ? 'border-blue-500 bg-blue-500/5 scale-[1.02]' : 'border-[var(--border)] hover:border-[var(--border-hover)]'}
-              ${droppedFile ? 'border-green-500 bg-green-500/5' : ''}
-              ${isRunning ? 'pointer-events-none opacity-50' : ''}
-            `}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            onClick={() => !droppedFile && fileInputRef.current?.click()}
-          >
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".zip"
-              className="hidden"
-              onChange={handleFileSelect}
-            />
+      <div
+        className={`relative border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-all duration-200
+          ${isDragging ? 'border-blue-500 bg-blue-500/5 scale-[1.02]' : 'border-[var(--border)] hover:border-[var(--border-hover)]'}
+          ${droppedFile ? 'border-green-500 bg-green-500/5' : ''}
+          ${isRunning ? 'pointer-events-none opacity-50' : ''}
+        `}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        onClick={() => !droppedFile && fileInputRef.current?.click()}
+      >
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".zip"
+          className="hidden"
+          onChange={handleFileSelect}
+        />
 
-            {droppedFile ? (
-              <div className="flex items-center justify-center gap-2">
-                <span className="text-green-500">📦</span>
-                <span className="text-sm font-medium text-green-600 dark:text-green-400 truncate max-w-[160px]">
-                  {droppedFile.name}
-                </span>
-                <button
-                  onClick={removeFile}
-                  className="text-[var(--text-muted)] hover:text-red-500 transition-colors ml-1"
-                >
-                  ✕
-                </button>
-              </div>
-            ) : (
-              <div>
-                <div className="text-2xl mb-1">{isDragging ? '📂' : '📁'}</div>
-                <p className="text-xs text-[var(--text-secondary)]">
-                  ZIP 파일을 드래그하거나{' '}
-                  <span className="text-blue-500 underline">클릭하여 선택</span>
-                </p>
-              </div>
-            )}
+        {droppedFile ? (
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-green-500">📦</span>
+            <span className="text-sm font-medium text-green-600 dark:text-green-400 truncate max-w-[160px]">
+              {droppedFile.name}
+            </span>
+            <button
+              onClick={removeFile}
+              className="text-[var(--text-muted)] hover:text-red-500 transition-colors ml-1"
+            >
+              ✕
+            </button>
           </div>
-        </>
-      )}
+        ) : (
+          <div>
+            <div className="text-2xl mb-1">{isDragging ? '📂' : '📁'}</div>
+            <p className="text-xs text-[var(--text-secondary)]">
+              ZIP 파일을 드래그하거나{' '}
+              <span className="text-blue-500 underline">클릭하여 선택</span>
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* Action Buttons */}
       <div className="mt-3 flex gap-2">
@@ -317,6 +318,8 @@ export const RepoInput: React.FC<RepoInputProps> = ({
               </svg>
               분석 중...
             </span>
+          ) : droppedFile ? (
+            'ZIP 분석 시작'
           ) : isProjectMode ? (
             `전체 분석 (${repos?.length ?? 0}개 레포)`
           ) : (
