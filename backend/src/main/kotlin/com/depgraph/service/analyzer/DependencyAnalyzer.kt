@@ -18,16 +18,22 @@ class DependencyAnalyzer(
 
     // HTTP 호출 패턴 — URL 또는 HTTP 클라이언트 호출에서 서비스명이 포함된 경우만 감지
     private val httpCallPatterns = listOf(
-        // URL 리터럴: http(s)://서비스명.xxx 또는 http(s)://xxx/서비스명
-        Regex("""https?://[^"'\s]*"""),
+        // URL 리터럴: http(s)://서비스명.xxx 또는 http(s)://xxx/서비스명 (quotes + template literals)
+        Regex("""https?://[^"'\s`]*"""),
         // Spring RestTemplate / WebClient
         Regex("""restTemplate\s*\.\s*(get|post|put|delete|patch|exchange)\w*\s*\(\s*["'][^"']*"""),
         Regex("""webClient\s*\.\s*(get|post|put|delete|patch)\s*\(\s*\)\s*\.uri\s*\(\s*["'][^"']*"""),
-        // Axios
-        Regex("""axios\s*\.\s*(get|post|put|delete|patch)\s*\(\s*['"][^'"]*"""),
-        Regex("""axios\s*\(\s*\{[^}]*url\s*:\s*['"][^'"]*"""),
+        // Axios (quotes + template literals)
+        Regex("""axios\s*\.\s*(get|post|put|delete|patch)\s*\(\s*['"`][^'"`]*"""),
+        Regex("""axios\s*\(\s*\{[^}]*url\s*:\s*['"`][^'"`]*"""),
         // Fetch API
-        Regex("""fetch\s*\(\s*['"][^'"]*"""),
+        Regex("""fetch\s*\(\s*['"`][^'"`]*"""),
+        // NestJS HttpService (this.httpService.get/post/...) — quotes + template literals
+        Regex("""httpService\s*\.\s*(get|post|put|delete|patch)\s*(?:<[^>]*>)?\s*\(\s*['"`][^'"`]*"""),
+        // NestJS HttpService via axiosRef
+        Regex("""httpService\s*\.\s*axiosRef\s*\.\s*(get|post|put|delete|patch)\s*(?:<[^>]*>)?\s*\(\s*['"`][^'"`]*"""),
+        // NestJS injected HTTP client (this.xxxClient.get/post/...) with URL
+        Regex("""this\s*\.\s*\w+(?:Client|Service|Http|Api)\s*\.\s*(get|post|put|delete|patch)\s*(?:<[^>]*>)?\s*\(\s*['"`][^'"`]*"""),
         // Spring @FeignClient
         Regex("""@FeignClient\s*\([^)]*(?:name|value)\s*=\s*["'][^"']*"""),
         // 환경변수/설정에서 서비스 URL 참조

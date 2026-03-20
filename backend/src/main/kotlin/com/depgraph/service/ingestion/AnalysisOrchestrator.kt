@@ -81,7 +81,17 @@ class AnalysisOrchestrator(
         log.info { "Legacy dependency analysis completed for project: $projectId" }
 
         // Phase 4: enhanced plugin-based dependency analysis
-        val servicesByName = allProjectServices.associateBy { it.name.lowercase() }
+        // Build service lookup with name variants (hyphen, underscore, no-separator)
+        val servicesByName = mutableMapOf<String, com.depgraph.domain.Service>()
+        allProjectServices.forEach { svc ->
+            val name = svc.name.lowercase()
+            servicesByName[name] = svc
+            // Add variants: my-service, my_service, myservice
+            servicesByName[name.replace("-", "")] = svc
+            servicesByName[name.replace("_", "")] = svc
+            servicesByName[name.replace("-", "_")] = svc
+            servicesByName[name.replace("_", "-")] = svc
+        }
         val allDependencies = mutableListOf<Dependency>()
 
         allProjectServices.forEach { sourceService ->
@@ -89,7 +99,15 @@ class AnalysisOrchestrator(
             val pluginDependencies = analyzerRegistry.analyzeDependencies(servicePath, sourceService.name)
 
             pluginDependencies.forEach { detected ->
-                val targetService = servicesByName[detected.target.lowercase()] ?: return@forEach
+                val targetService = servicesByName[detected.target.lowercase()]
+                if (targetService == null) {
+                    log.warn {
+                        "Dependency target '${detected.target}' not found in known services " +
+                            "(source=${sourceService.name}, detectedBy=${detected.detectedBy}). " +
+                            "Known services: ${servicesByName.keys}"
+                    }
+                    return@forEach
+                }
                 if (targetService.id == sourceService.id) return@forEach
 
                 allDependencies.add(

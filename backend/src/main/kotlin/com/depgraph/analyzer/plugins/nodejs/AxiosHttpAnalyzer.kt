@@ -24,6 +24,11 @@ class AxiosHttpAnalyzer : AnalyzerPlugin {
         """axios\s*\.\s*(get|post|put|delete|patch)\s*\(\s*['"`](https?://[^'"`]+)['"`]""",
     )
 
+    // axios.get(`http://...`) — template literal
+    private val axiosMethodTemplateLiteralPattern = Regex(
+        """axios\s*\.\s*(get|post|put|delete|patch)\s*\(\s*`(https?://[^`]+)`""",
+    )
+
     // axios({ url: "http://..." }) or axios("http://...")
     private val axiosDirectPattern = Regex(
         """axios\s*\(\s*(?:\{[^}]*url\s*:\s*)?['"`](https?://[^'"`]+)['"`]""",
@@ -56,6 +61,27 @@ class AxiosHttpAnalyzer : AnalyzerPlugin {
                         endpoint = ServiceNameResolver.extractPath(url),
                         confidence = 0.9,
                         detectedBy = id,
+                        sourceLocations = listOf(location),
+                    ),
+                )
+            }
+
+            // Match axios method calls with template literals
+            axiosMethodTemplateLiteralPattern.findAll(file.content).forEach { match ->
+                val method = match.groupValues[1].uppercase()
+                val url = match.groupValues[2].replace(Regex("""\$\{[^}]+\}"""), "")
+                val target = ServiceNameResolver.resolveFromUrl(url, context.envVariables) ?: return@forEach
+
+                val location = SourceLocationExtractor.extract(file, match)
+                dependencies.add(
+                    DetectedDependency(
+                        source = ServiceNameResolver.resolveServiceName(context.projectRoot),
+                        target = target,
+                        protocol = "HTTP",
+                        method = method,
+                        endpoint = ServiceNameResolver.extractPath(url),
+                        confidence = 0.85,
+                        detectedBy = "$id.template",
                         sourceLocations = listOf(location),
                     ),
                 )

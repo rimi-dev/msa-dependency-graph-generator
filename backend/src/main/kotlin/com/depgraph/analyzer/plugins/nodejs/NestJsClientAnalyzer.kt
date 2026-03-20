@@ -24,8 +24,29 @@ class NestJsClientAnalyzer : AnalyzerPlugin {
     )
 
     // httpService.get("http://..."), httpService.post("http://..."), etc.
+    // Supports regular quotes and template literals
     private val nestHttpServicePattern = Regex(
-        """httpService\s*\.\s*(get|post|put|delete|patch)\s*\(\s*['"`](https?://[^'"`]+)['"`]""",
+        """httpService\s*\.\s*(get|post|put|delete|patch)\s*(?:<[^>]*>)?\s*\(\s*['"`](https?://[^'"`]+)['"`]""",
+    )
+
+    // httpService.get(`http://...`) or httpService.get(`${baseUrl}/path`) — template literal with expressions
+    private val nestHttpServiceTemplateLiteralPattern = Regex(
+        """httpService\s*\.\s*(get|post|put|delete|patch)\s*(?:<[^>]*>)?\s*\(\s*`([^`]+)`""",
+    )
+
+    // httpService.axiosRef.get("http://...") or httpService.axiosRef.get(`...`)
+    private val nestAxiosRefPattern = Regex(
+        """httpService\s*\.\s*axiosRef\s*\.\s*(get|post|put|delete|patch)\s*(?:<[^>]*>)?\s*\(\s*['"`]([^'"`]+)['"`]""",
+    )
+
+    // this.xxxService.get/post("http://...") — injected HttpService via any variable name
+    private val injectedHttpServicePattern = Regex(
+        """this\s*\.\s*(\w+)\s*\.\s*(get|post|put|delete|patch)\s*(?:<[^>]*>)?\s*\(\s*['"`](https?://[^'"`]+)['"`]""",
+    )
+
+    // HttpService injection detection: constructor(private xxx: HttpService)
+    private val httpServiceInjectionPattern = Regex(
+        """(?:private|protected|public)\s+(?:readonly\s+)?(\w+)\s*:\s*HttpService""",
     )
 
     // ClientProxy.send('pattern', data) or ClientProxy.emit('pattern', data)
@@ -58,7 +79,12 @@ class NestJsClientAnalyzer : AnalyzerPlugin {
                 )
             }
 
-            // HttpService calls
+            // Detect HttpService variable names from constructor injection
+            val httpServiceVarNames = httpServiceInjectionPattern.findAll(file.content)
+                .map { it.groupValues[1] }
+                .toSet()
+
+            // HttpService calls with literal URLs
             nestHttpServicePattern.findAll(file.content).forEach { match ->
                 val method = match.groupValues[1].uppercase()
                 val url = match.groupValues[2]
@@ -77,6 +103,77 @@ class NestJsClientAnalyzer : AnalyzerPlugin {
                         sourceLocations = listOf(location),
                     ),
                 )
+            }
+
+            // HttpService calls with template literals (may contain ${expressions})
+            nestHttpServiceTemplateLiteralPattern.findAll(file.content).forEach { match ->
+                val method = match.groupValues[1].uppercase()
+                val templateContent = match.groupValues[2]
+                // Expand env vars in template, then try to resolve service name
+                val expandedUrl = resolveTemplateUrl(templateContent, context.envVariables)
+                val target = ServiceNameResolver.resolveFromUrl(expandedUrl, context.envVariables) ?: return@forEach
+
+                val location = SourceLocationExtractor.extract(file, match)
+                dependencies.add(
+                    DetectedDependency(
+                        source = ServiceNameResolver.resolveServiceName(context.projectRoot),
+                        target = target,
+                        protocol = "HTTP",
+                        method = method,
+                        endpoint = ServiceNameResolver.extractPath(expandedUrl),
+                        confidence = 0.8,
+                        detectedBy = "$id.httpservice.template",
+                        sourceLocations = listOf(location),
+                    ),
+                )
+            }
+
+            // httpService.axiosRef calls
+            nestAxiosRefPattern.findAll(file.content).forEach { match ->
+                val method = match.groupValues[1].uppercase()
+                val url = match.groupValues[2]
+                val resolvedUrl = if (url.startsWith("http")) url else "http://$url"
+                val target = ServiceNameResolver.resolveFromUrl(resolvedUrl, context.envVariables) ?: return@forEach
+
+                val location = SourceLocationExtractor.extract(file, match)
+                dependencies.add(
+                    DetectedDependency(
+                        source = ServiceNameResolver.resolveServiceName(context.projectRoot),
+                        target = target,
+                        protocol = "HTTP",
+                        method = method,
+                        endpoint = ServiceNameResolver.extractPath(resolvedUrl),
+                        confidence = 0.85,
+                        detectedBy = "$id.axiosref",
+                        sourceLocations = listOf(location),
+                    ),
+                )
+            }
+
+            // Injected HttpService via custom variable names (this.xxxService.get(...))
+            if (httpServiceVarNames.isNotEmpty()) {
+                injectedHttpServicePattern.findAll(file.content).forEach { match ->
+                    val varName = match.groupValues[1]
+                    if (varName !in httpServiceVarNames && varName != "httpService") return@forEach
+
+                    val method = match.groupValues[2].uppercase()
+                    val url = match.groupValues[3]
+                    val target = ServiceNameResolver.resolveFromUrl(url, context.envVariables) ?: return@forEach
+
+                    val location = SourceLocationExtractor.extract(file, match)
+                    dependencies.add(
+                        DetectedDependency(
+                            source = ServiceNameResolver.resolveServiceName(context.projectRoot),
+                            target = target,
+                            protocol = "HTTP",
+                            method = method,
+                            endpoint = ServiceNameResolver.extractPath(url),
+                            confidence = 0.85,
+                            detectedBy = "$id.injected",
+                            sourceLocations = listOf(location),
+                        ),
+                    )
+                }
             }
 
             // ClientProxy.send/emit calls
@@ -108,5 +205,26 @@ class NestJsClientAnalyzer : AnalyzerPlugin {
 
         log.debug { "[$id] Found ${dependencies.size} dependencies" }
         return dependencies
+    }
+
+    /**
+     * Resolves template literal URLs by replacing ${...} expressions with env variable values.
+     * e.g., `${SERVICE_URL}/api/path` → `http://account-service:3000/api/path`
+     */
+    private fun resolveTemplateUrl(template: String, envVariables: Map<String, String>): String {
+        val envRefPattern = Regex("""\$\{(?:process\.env\.)?([A-Z_a-z][A-Z_a-z0-9]*)\}""")
+        var resolved = template
+        envRefPattern.findAll(template).forEach { match ->
+            val key = match.groupValues[1]
+            val value = envVariables[key] ?: envVariables[key.uppercase()]
+            if (value != null) {
+                resolved = resolved.replace(match.value, value)
+            }
+        }
+        // If still has unresolved expressions but contains a hostname pattern, try to extract
+        if (!resolved.startsWith("http")) {
+            resolved = "http://$resolved"
+        }
+        return resolved
     }
 }

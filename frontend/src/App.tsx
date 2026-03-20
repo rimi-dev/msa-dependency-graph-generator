@@ -91,22 +91,29 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthentica
     }
   }, [selectedProjectId]);
 
-  // When analysis completes, switch to the new project
+  // When analysis completes, switch to the new project and reload graph
   useEffect(() => {
     if (analysis.completedProjectId) {
       setSelectedProjectId(analysis.completedProjectId);
+      // Force graph reload (even if same project was already selected)
+      graph.loadGraph(analysis.completedProjectId);
       // Refresh project list
       listProjects()
         .then((res) => {
           if (res.success) setProjects(res.data);
         })
         .catch(() => {});
-      // Refresh repos
+      // Refresh repos and services
       getProjectDetail(analysis.completedProjectId)
         .then((res) => {
           if (res.success && res.data.repos) {
             setProjectRepos(res.data.repos);
           }
+        })
+        .catch(() => {});
+      listServices(analysis.completedProjectId)
+        .then((res) => {
+          if (res.success) setServices(res.data);
         })
         .catch(() => {});
     }
