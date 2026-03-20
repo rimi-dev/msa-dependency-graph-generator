@@ -48,7 +48,7 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({
   const [currentZoom, setCurrentZoom] = useState(1);
   const [layout, setLayout] = useState<LayoutType>('force');
   const [lockNodes, setLockNodes] = useState(false);
-  const [protocolFilter, setProtocolFilter] = useState<Set<Protocol>>(new Set(['HTTP', 'gRPC', 'MQ']));
+  const [protocolFilter, setProtocolFilter] = useState<Set<Protocol>>(new Set(['HTTP']));
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [depthFilterNodeId, setDepthFilterNodeId] = useState<string | null>(null);
   const [tooltip, setTooltip] = useState<TooltipState>({ visible: false, x: 0, y: 0, content: null });
@@ -79,8 +79,6 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({
   const edgeCounts = useMemo(() => {
     return {
       HTTP: initialLinks.filter((l) => l.protocol === 'HTTP').length,
-      gRPC: initialLinks.filter((l) => l.protocol === 'gRPC').length,
-      MQ: initialLinks.filter((l) => l.protocol === 'MQ').length,
     };
   }, [initialLinks]);
 
@@ -125,7 +123,7 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({
     const defs = d3.select(svg).append('defs');
 
     // Arrow markers for each protocol
-    const protocols: Protocol[] = ['HTTP', 'gRPC', 'MQ'];
+    const protocols: Protocol[] = ['HTTP'];
     protocols.forEach((p) => {
       const color = getProtocolColor(p);
       defs

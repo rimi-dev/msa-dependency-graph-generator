@@ -26,9 +26,7 @@ export const getLanguageColor = (language: string): LanguageColor => {
 };
 
 export const PROTOCOL_COLORS: Record<string, string> = {
-  HTTP: '#4B5563',
-  gRPC: '#6366F1',
-  MQ: '#F59E0B',
+  HTTP: '#3B82F6',
 };
 
 export const getProtocolColor = (protocol: string): string => {
@@ -37,8 +35,6 @@ export const getProtocolColor = (protocol: string): string => {
 
 export const PROTOCOL_STROKE_DASH: Record<string, string> = {
   HTTP: 'none',
-  gRPC: '8,4',
-  MQ: '2,4',
 };
 
 export const getProtocolStrokeDash = (protocol: string): string => {

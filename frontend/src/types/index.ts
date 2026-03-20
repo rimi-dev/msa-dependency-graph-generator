@@ -32,7 +32,7 @@ export interface ServiceNode {
   repoUrl?: string;
 }
 
-export type Protocol = 'HTTP' | 'gRPC' | 'MQ';
+export type Protocol = 'HTTP';
 
 export interface DependencyEdge {
   id: string;

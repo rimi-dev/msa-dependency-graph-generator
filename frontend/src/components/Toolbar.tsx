@@ -13,7 +13,7 @@ interface ToolbarProps {
   onProtocolFilterChange: (protocols: Set<Protocol>) => void;
   lockNodes: boolean;
   onLockToggle: () => void;
-  edgeCounts: { HTTP: number; gRPC: number; MQ: number };
+  edgeCounts: { HTTP: number };
 }
 
 const LAYOUTS: { value: LayoutType; label: string; icon: string }[] = [
@@ -22,7 +22,7 @@ const LAYOUTS: { value: LayoutType; label: string; icon: string }[] = [
   { value: 'radial', label: '방사형', icon: '🎯' },
 ];
 
-const PROTOCOLS: Protocol[] = ['HTTP', 'gRPC', 'MQ'];
+const PROTOCOLS: Protocol[] = ['HTTP'];
 
 export const Toolbar: React.FC<ToolbarProps> = ({
   zoom,
@@ -227,15 +227,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           return (
             <span key={p} className="flex items-center gap-1.5">
               <svg width="20" height="8" viewBox="0 0 20 8">
-                {p === 'HTTP' && (
-                  <line x1="0" y1="4" x2="20" y2="4" stroke={color} strokeWidth="2" />
-                )}
-                {p === 'gRPC' && (
-                  <line x1="0" y1="4" x2="20" y2="4" stroke={color} strokeWidth="2" strokeDasharray="5,3" />
-                )}
-                {p === 'MQ' && (
-                  <line x1="0" y1="4" x2="20" y2="4" stroke={color} strokeWidth="2" strokeDasharray="2,3" />
-                )}
+                <line x1="0" y1="4" x2="20" y2="4" stroke={color} strokeWidth="2" />
               </svg>
               <span style={{ color }}>
                 {p} ({edgeCounts[p]})
