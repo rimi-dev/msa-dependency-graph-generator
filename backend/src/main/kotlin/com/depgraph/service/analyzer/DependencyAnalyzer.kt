@@ -18,23 +18,23 @@ class DependencyAnalyzer(
 
     // HTTP 호출 패턴 — URL 또는 HTTP 클라이언트 호출에서 서비스명이 포함된 경우만 감지
     private val httpCallPatterns = listOf(
-        // URL 리터럴: http(s)://서비스명.xxx 또는 http(s)://xxx/서비스명 (quotes + template literals)
+        // URL 리터럴: http(s)://서비스명.xxx 또는 http(s)://xxx/서비스명 (따옴표 + 템플릿 리터럴)
         Regex("""https?://[^"'\s`]*"""),
-        // Spring RestTemplate / WebClient
+        // Spring RestTemplate / WebClient 패턴
         Regex("""restTemplate\s*\.\s*(get|post|put|delete|patch|exchange)\w*\s*\(\s*["'][^"']*"""),
         Regex("""webClient\s*\.\s*(get|post|put|delete|patch)\s*\(\s*\)\s*\.uri\s*\(\s*["'][^"']*"""),
-        // Axios (quotes + template literals)
+        // Axios (따옴표 + 템플릿 리터럴)
         Regex("""axios\s*\.\s*(get|post|put|delete|patch)\s*\(\s*['"`][^'"`]*"""),
         Regex("""axios\s*\(\s*\{[^}]*url\s*:\s*['"`][^'"`]*"""),
-        // Fetch API
+        // Fetch API 패턴
         Regex("""fetch\s*\(\s*['"`][^'"`]*"""),
-        // NestJS HttpService (this.httpService.get/post/...) — quotes + template literals
+        // NestJS HttpService (this.httpService.get/post/...) — 따옴표 + 템플릿 리터럴
         Regex("""httpService\s*\.\s*(get|post|put|delete|patch)\s*(?:<[^>]*>)?\s*\(\s*['"`][^'"`]*"""),
-        // NestJS HttpService via axiosRef
+        // NestJS HttpService의 axiosRef를 통한 호출
         Regex("""httpService\s*\.\s*axiosRef\s*\.\s*(get|post|put|delete|patch)\s*(?:<[^>]*>)?\s*\(\s*['"`][^'"`]*"""),
-        // NestJS injected HTTP client (this.xxxClient.get/post/...) with URL
+        // NestJS 주입된 HTTP 클라이언트 (this.xxxClient.get/post/...) URL 포함
         Regex("""this\s*\.\s*\w+(?:Client|Service|Http|Api)\s*\.\s*(get|post|put|delete|patch)\s*(?:<[^>]*>)?\s*\(\s*['"`][^'"`]*"""),
-        // Spring @FeignClient
+        // Spring @FeignClient 패턴
         Regex("""@FeignClient\s*\([^)]*(?:name|value)\s*=\s*["'][^"']*"""),
         // 환경변수/설정에서 서비스 URL 참조
         Regex("""[A-Z_]*(?:URL|HOST|ENDPOINT|BASE_URL|SERVICE)\s*[:=]\s*["']?https?://[^"'\s]*"""),
@@ -85,7 +85,7 @@ class DependencyAnalyzer(
         serviceNames: Map<String, Service>,
         currentServiceName: String,
     ): List<Service> {
-        val results = mutableSetOf<String>() // serviceId set for dedup
+        val results = mutableSetOf<String>() // 중복 제거를 위한 serviceId 집합
 
         Files.walk(servicePath).use { stream ->
             stream

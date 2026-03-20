@@ -18,33 +18,33 @@ class NestJsClientAnalyzer : AnalyzerPlugin {
     override val supportedLanguages = listOf("typescript")
     override val supportedFrameworks = listOf("nestjs")
 
-    // @Client({ name: 'service-name', ... })
+    // @Client({ name: 'service-name', ... }) 마이크로서비스 클라이언트 데코레이터 패턴
     private val nestClientPattern = Regex(
         """@Client\s*\(\s*\{[^}]*name\s*:\s*['"`]([^'"`]+)['"`]""",
     )
 
-    // httpService.get("http://..."), httpService.post("http://..."), etc.
-    // Supports regular quotes and template literals
+    // httpService.get("http://..."), httpService.post("http://...") 등
+    // 일반 따옴표 및 템플릿 리터럴 지원
     private val nestHttpServicePattern = Regex(
         """httpService\s*\.\s*(get|post|put|delete|patch)\s*(?:<[^>]*>)?\s*\(\s*['"`](https?://[^'"`]+)['"`]""",
     )
 
-    // httpService.get(`http://...`) or httpService.get(`${baseUrl}/path`) — template literal with expressions
+    // httpService.get(`http://...`) 또는 httpService.get(`${baseUrl}/path`) — 표현식이 포함된 템플릿 리터럴
     private val nestHttpServiceTemplateLiteralPattern = Regex(
         """httpService\s*\.\s*(get|post|put|delete|patch)\s*(?:<[^>]*>)?\s*\(\s*`([^`]+)`""",
     )
 
-    // httpService.axiosRef.get("http://...") or httpService.axiosRef.get(`...`)
+    // httpService.axiosRef.get("http://...") 또는 httpService.axiosRef.get(`...`)
     private val nestAxiosRefPattern = Regex(
         """httpService\s*\.\s*axiosRef\s*\.\s*(get|post|put|delete|patch)\s*(?:<[^>]*>)?\s*\(\s*['"`]([^'"`]+)['"`]""",
     )
 
-    // this.xxxService.get/post("http://...") — injected HttpService via any variable name
+    // this.xxxService.get/post("http://...") — 임의의 변수명으로 주입된 HttpService
     private val injectedHttpServicePattern = Regex(
         """this\s*\.\s*(\w+)\s*\.\s*(get|post|put|delete|patch)\s*(?:<[^>]*>)?\s*\(\s*['"`](https?://[^'"`]+)['"`]""",
     )
 
-    // HttpService injection detection: constructor(private xxx: HttpService)
+    // HttpService 주입 감지: constructor(private xxx: HttpService)
     private val httpServiceInjectionPattern = Regex(
         """(?:private|protected|public)\s+(?:readonly\s+)?(\w+)\s*:\s*HttpService""",
     )
@@ -60,7 +60,7 @@ class NestJsClientAnalyzer : AnalyzerPlugin {
         val targetFiles = context.files.filter { it.language in supportedLanguages }
 
         targetFiles.forEach { file ->
-            // @Client decorator - microservice client injection
+            // @Client 데코레이터 — 마이크로서비스 클라이언트 주입
             nestClientPattern.findAll(file.content).forEach { match ->
                 val clientName = match.groupValues[1]
 
@@ -79,12 +79,12 @@ class NestJsClientAnalyzer : AnalyzerPlugin {
                 )
             }
 
-            // Detect HttpService variable names from constructor injection
+            // 생성자 주입에서 HttpService 변수명 감지
             val httpServiceVarNames = httpServiceInjectionPattern.findAll(file.content)
                 .map { it.groupValues[1] }
                 .toSet()
 
-            // HttpService calls with literal URLs
+            // 리터럴 URL을 사용하는 HttpService 호출
             nestHttpServicePattern.findAll(file.content).forEach { match ->
                 val method = match.groupValues[1].uppercase()
                 val url = match.groupValues[2]
@@ -105,11 +105,11 @@ class NestJsClientAnalyzer : AnalyzerPlugin {
                 )
             }
 
-            // HttpService calls with template literals (may contain ${expressions})
+            // 템플릿 리터럴을 사용하는 HttpService 호출 (${표현식} 포함 가능)
             nestHttpServiceTemplateLiteralPattern.findAll(file.content).forEach { match ->
                 val method = match.groupValues[1].uppercase()
                 val templateContent = match.groupValues[2]
-                // Expand env vars in template, then try to resolve service name
+                // 템플릿 내 환경변수를 확장한 후 서비스명 추출 시도
                 val expandedUrl = resolveTemplateUrl(templateContent, context.envVariables)
                 val target = ServiceNameResolver.resolveFromUrl(expandedUrl, context.envVariables) ?: return@forEach
 
@@ -128,7 +128,7 @@ class NestJsClientAnalyzer : AnalyzerPlugin {
                 )
             }
 
-            // httpService.axiosRef calls
+            // httpService.axiosRef 호출
             nestAxiosRefPattern.findAll(file.content).forEach { match ->
                 val method = match.groupValues[1].uppercase()
                 val url = match.groupValues[2]
@@ -150,7 +150,7 @@ class NestJsClientAnalyzer : AnalyzerPlugin {
                 )
             }
 
-            // Injected HttpService via custom variable names (this.xxxService.get(...))
+            // 커스텀 변수명으로 주입된 HttpService (this.xxxService.get(...))
             if (httpServiceVarNames.isNotEmpty()) {
                 injectedHttpServicePattern.findAll(file.content).forEach { match ->
                     val varName = match.groupValues[1]
@@ -176,7 +176,7 @@ class NestJsClientAnalyzer : AnalyzerPlugin {
                 }
             }
 
-            // ClientProxy.send/emit calls
+            // ClientProxy.send/emit 호출
             clientProxySendPattern.findAll(file.content).forEach { match ->
                 val proxyVar = match.groupValues[1]
                 val operation = match.groupValues[2]
@@ -184,7 +184,7 @@ class NestJsClientAnalyzer : AnalyzerPlugin {
                     ?: match.groupValues[4].takeIf { it.isNotEmpty() }
                     ?: return@forEach
 
-                // Skip obvious non-proxy variables
+                // 프록시가 아닌 것이 명확한 변수는 건너뜀
                 if (proxyVar in setOf("this", "res", "req", "response", "request", "console")) return@forEach
 
                 val location = SourceLocationExtractor.extract(file, match)
@@ -208,8 +208,8 @@ class NestJsClientAnalyzer : AnalyzerPlugin {
     }
 
     /**
-     * Resolves template literal URLs by replacing ${...} expressions with env variable values.
-     * e.g., `${SERVICE_URL}/api/path` → `http://account-service:3000/api/path`
+     * 템플릿 리터럴 URL에서 ${...} 표현식을 환경변수 값으로 치환하여 해석합니다.
+     * 예: `${SERVICE_URL}/api/path` → `http://account-service:3000/api/path`
      */
     private fun resolveTemplateUrl(template: String, envVariables: Map<String, String>): String {
         val envRefPattern = Regex("""\$\{(?:process\.env\.)?([A-Z_a-z][A-Z_a-z0-9]*)\}""")
@@ -221,7 +221,7 @@ class NestJsClientAnalyzer : AnalyzerPlugin {
                 resolved = resolved.replace(match.value, value)
             }
         }
-        // If still has unresolved expressions but contains a hostname pattern, try to extract
+        // 아직 미해석 표현식이 남아있지만 호스트명 패턴을 포함하는 경우, 추출 시도
         if (!resolved.startsWith("http")) {
             resolved = "http://$resolved"
         }

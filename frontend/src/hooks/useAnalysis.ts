@@ -76,7 +76,7 @@ export const useAnalysis = () => {
             handleJobUpdate(res.data);
           }
         } catch {
-          // Ignore transient errors
+          // 일시적 오류 무시
         }
       }, 2000);
     },
@@ -96,15 +96,15 @@ export const useAnalysis = () => {
         completedProjectId: null,
       }));
 
-      // Try WebSocket first, fall back to polling
+      // WebSocket을 먼저 시도하고, 실패 시 폴링으로 대체
       try {
         const unsub = await subscribeJobProgress(jobId, handleJobUpdate);
         unsubscribeRef.current = unsub;
       } catch {
-        // WebSocket failed, will rely on polling
+        // WebSocket 실패, 폴링에 의존
       }
 
-      // Always start polling as a safety net
+      // 안전장치로 항상 폴링 시작
       pollJobStatus(jobId);
     },
     [handleJobUpdate, pollJobStatus]

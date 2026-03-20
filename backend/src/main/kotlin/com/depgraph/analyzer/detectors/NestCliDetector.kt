@@ -24,7 +24,7 @@ class NestCliDetector(
         log.debug { "[$id] Parsing nest-cli.json at $projectRoot" }
         val parsed = configFileParser.parseNestCliJson(nestCliFile)
 
-        // Standard NestJS project (non-monorepo)
+        // 표준 NestJS 프로젝트 (모노레포가 아닌 경우)
         if (parsed["monorepo"] != true) {
             val name = projectRoot.fileName.toString()
 
@@ -39,7 +39,7 @@ class NestCliDetector(
             ).also { log.info { "[$id] Detected NestJS project: ${it.first().name}" } }
         }
 
-        // NestJS monorepo - extract all apps
+        // NestJS 모노레포 — 모든 앱 추출
         @Suppress("UNCHECKED_CAST")
         val projects = parsed["projects"] as? Map<String, Any> ?: emptyMap()
         val services = projects.map { (projectName, projectConfig) ->

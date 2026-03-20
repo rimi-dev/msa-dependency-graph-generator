@@ -19,22 +19,22 @@ class AxiosHttpAnalyzer : AnalyzerPlugin {
     override val supportedLanguages = listOf("typescript", "javascript")
     override val supportedFrameworks = listOf("express", "nestjs", "node")
 
-    // axios.get("http://..."), axios.post("http://..."), etc.
+    // axios.get("http://..."), axios.post("http://...") 등
     private val axiosMethodPattern = Regex(
         """axios\s*\.\s*(get|post|put|delete|patch)\s*\(\s*['"`](https?://[^'"`]+)['"`]""",
     )
 
-    // axios.get(`http://...`) — template literal
+    // axios.get(`http://...`) — 템플릿 리터럴
     private val axiosMethodTemplateLiteralPattern = Regex(
         """axios\s*\.\s*(get|post|put|delete|patch)\s*\(\s*`(https?://[^`]+)`""",
     )
 
-    // axios({ url: "http://..." }) or axios("http://...")
+    // axios({ url: "http://..." }) 또는 axios("http://...")
     private val axiosDirectPattern = Regex(
         """axios\s*\(\s*(?:\{[^}]*url\s*:\s*)?['"`](https?://[^'"`]+)['"`]""",
     )
 
-    // env var reference pattern
+    // 환경변수 참조 패턴
     private val envVarPattern = Regex(
         """process\.env\.([A-Z_]+(?:URL|HOST|ENDPOINT|BASE)[A-Z_]*)""",
     )
@@ -45,7 +45,7 @@ class AxiosHttpAnalyzer : AnalyzerPlugin {
         val targetFiles = context.files.filter { it.language in supportedLanguages }
 
         targetFiles.forEach { file ->
-            // Match axios method calls
+            // axios 메서드 호출 매칭
             axiosMethodPattern.findAll(file.content).forEach { match ->
                 val method = match.groupValues[1].uppercase()
                 val url = match.groupValues[2]
@@ -66,7 +66,7 @@ class AxiosHttpAnalyzer : AnalyzerPlugin {
                 )
             }
 
-            // Match axios method calls with template literals
+            // 템플릿 리터럴을 사용하는 axios 메서드 호출 매칭
             axiosMethodTemplateLiteralPattern.findAll(file.content).forEach { match ->
                 val method = match.groupValues[1].uppercase()
                 val url = match.groupValues[2].replace(Regex("""\$\{[^}]+\}"""), "")
@@ -87,7 +87,7 @@ class AxiosHttpAnalyzer : AnalyzerPlugin {
                 )
             }
 
-            // Match axios direct calls
+            // axios 직접 호출 매칭
             axiosDirectPattern.findAll(file.content).forEach { match ->
                 val url = match.groupValues[1]
                 val target = ServiceNameResolver.resolveFromUrl(url, context.envVariables) ?: return@forEach
@@ -107,7 +107,7 @@ class AxiosHttpAnalyzer : AnalyzerPlugin {
                 )
             }
 
-            // Match env var references for URL discovery
+            // URL 발견을 위한 환경변수 참조 매칭
             envVarPattern.findAll(file.content).forEach { match ->
                 val envKey = match.groupValues[1]
                 val envValue = context.envVariables[envKey] ?: return@forEach

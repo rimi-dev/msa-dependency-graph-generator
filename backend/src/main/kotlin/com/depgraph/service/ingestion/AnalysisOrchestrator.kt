@@ -40,15 +40,15 @@ class AnalysisOrchestrator(
                 .orElseThrow { ProjectRepoNotFoundException(it) }
         }
 
-        // Phase 1: legacy service detection (saves to DB, per-repo aware)
+        // 1단계: 레거시 서비스 탐지 (DB 저장, 레포 단위 인식)
         val detectedServices = serviceDetector.detect(projectId, workDir, repoId)
         log.info { "Detected ${detectedServices.size} services via legacy detector for project: $projectId" }
 
-        // Phase 2: enhanced service detection via plugin registry
+        // 2단계: 플러그인 레지스트리를 통한 향상된 서비스 탐지
         val pluginDetectedServices = analyzerRegistry.detectServices(workDir)
         log.info { "Plugin registry detected ${pluginDetectedServices.size} additional services for project: $projectId" }
 
-        // Merge plugin-detected services with legacy detected services
+        // 플러그인 탐지 서비스와 레거시 탐지 서비스 병합
         val project = projectRepository.findById(projectId)
             .orElseThrow { ProjectNotFoundException(projectId) }
 
@@ -70,14 +70,14 @@ class AnalysisOrchestrator(
                 .also { log.info { "Saved ${it.size} newly detected services for project: $projectId" } }
         } else emptyList()
 
-        // For dependency analysis: use ALL project services (cross-repo)
+        // 의존성 분석 시: 프로젝트의 모든 서비스 사용 (레포 간 교차 분석)
         var allProjectServices = serviceRepository.findAllByProjectId(projectId)
 
-        // Delete all project dependencies and re-analyze (cross-repo dependencies)
+        // 프로젝트의 모든 의존성을 삭제하고 재분석 (레포 간 의존성)
         dependencyRepository.deleteAllBySourceProjectIdOrTargetProjectId(projectId, projectId)
 
-        // Phase 3: enhanced plugin-based dependency analysis (runs first to auto-create missing services)
-        // Build service lookup with name variants (hyphen, underscore, no-separator)
+        // 3단계: 플러그인 기반 향상된 의존성 분석 (누락된 서비스 자동 생성을 위해 먼저 실행)
+        // 이름 변형(하이픈, 언더스코어, 구분자 없음)으로 서비스 조회 맵 구축
         val servicesByName = mutableMapOf<String, com.depgraph.domain.Service>()
         fun registerServiceVariants(svc: com.depgraph.domain.Service) {
             val name = svc.name.lowercase()
@@ -98,7 +98,7 @@ class AnalysisOrchestrator(
             pluginDependencies.forEach { detected ->
                 var targetService = servicesByName[detected.target.lowercase()]
                 if (targetService == null) {
-                    // Auto-create target service discovered via HTTP URL
+                    // HTTP URL을 통해 발견된 대상 서비스 자동 생성
                     log.info {
                         "Auto-creating service '${detected.target}' discovered via HTTP call " +
                             "(source=${sourceService.name}, detectedBy=${detected.detectedBy})"
@@ -131,7 +131,7 @@ class AnalysisOrchestrator(
             log.info { "Saved ${allDependencies.size} plugin-detected dependencies for project: $projectId" }
         }
 
-        // Phase 4: legacy dependency analysis (uses all services including auto-created ones)
+        // 4단계: 레거시 의존성 분석 (자동 생성된 서비스를 포함한 모든 서비스 사용)
         allProjectServices = serviceRepository.findAllByProjectId(projectId)
         dependencyAnalyzer.analyze(projectId, workDir, allProjectServices)
         log.info { "Legacy dependency analysis completed for project: $projectId" }

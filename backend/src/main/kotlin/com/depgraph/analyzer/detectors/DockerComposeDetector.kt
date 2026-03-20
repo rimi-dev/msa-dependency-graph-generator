@@ -40,7 +40,7 @@ class DockerComposeDetector(
                     val language = detectLanguageFromConfig(serviceConfig, image)
                     val framework = detectFrameworkFromConfig(serviceConfig)
 
-                    // Determine root path for build-based services
+                    // 빌드 기반 서비스의 루트 경로 결정
                     val rootPath = when (build) {
                         is String -> projectRoot.resolve(build).toString()
                         is Map<*, *> -> {

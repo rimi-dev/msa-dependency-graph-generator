@@ -42,7 +42,7 @@ class AnalyzerRegistry(
     }
 
     /**
-     * Detects all services in the given project root using all registered ServiceDetectorPlugins.
+     * 등록된 모든 ServiceDetectorPlugin을 사용하여 주어진 프로젝트 루트에서 서비스를 탐지합니다.
      */
     fun detectServices(projectRoot: Path): List<DetectedService> {
         log.info { "Running ${serviceDetectorPlugins.size} service detector plugins on $projectRoot" }
@@ -58,7 +58,7 @@ class AnalyzerRegistry(
     }
 
     /**
-     * Runs all registered AnalyzerPlugins to detect dependencies in the given context.
+     * 등록된 모든 AnalyzerPlugin을 실행하여 주어진 컨텍스트에서 의존성을 탐지합니다.
      */
     fun analyzeDependencies(projectRoot: Path, serviceName: String): List<DetectedDependency> {
         val context = buildAnalysisContext(projectRoot)
@@ -75,8 +75,8 @@ class AnalyzerRegistry(
     }
 
     /**
-     * Builds an AnalysisContext for the given project root by scanning source files,
-     * parsing config files, and collecting env variables.
+     * 소스 파일 스캔, 설정 파일 파싱, 환경변수 수집을 통해 주어진 프로젝트 루트의
+     * AnalysisContext를 구성합니다.
      */
     fun buildAnalysisContext(projectRoot: Path): AnalysisContext {
         val sourceFiles = scanSourceFiles(projectRoot)
@@ -132,18 +132,18 @@ class AnalyzerRegistry(
         val configFiles = mutableMapOf<String, Any>()
         val envVariables = mutableMapOf<String, String>()
 
-        // Load docker-compose
+        // docker-compose 로드
         listOf("docker-compose.yml", "docker-compose.yaml").forEach { name ->
             val path = root.resolve(name)
             if (Files.exists(path)) {
                 val parsed = configFileParser.parseDockerCompose(path)
                 configFiles[name] = parsed
-                // Extract env vars from docker-compose services
+                // docker-compose 서비스에서 환경변수 추출
                 envVariables.putAll(configFileParser.extractDockerComposeEnvVars(parsed))
             }
         }
 
-        // Load .env files
+        // .env 파일 로드
         listOf(".env", ".env.local", ".env.development", ".env.production").forEach { name ->
             val path = root.resolve(name)
             if (Files.exists(path)) {

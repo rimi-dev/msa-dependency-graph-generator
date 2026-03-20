@@ -33,7 +33,7 @@ const App: React.FC = () => {
   );
 };
 
-// ─── Main App (authenticated) ────────────────────────────────────────────────
+// ─── 메인 앱 (인증 완료 상태) ────────────────────────────────────────────────
 
 interface MainAppProps {
   user: { id: string; login: string; name: string | null; email: string | null; avatarUrl: string | null } | null;
@@ -54,7 +54,7 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthentica
   const analysis = useAnalysis();
   const graph = useGraph(selectedProjectId);
 
-  // Load projects on mount
+  // 마운트 시 프로젝트 목록 로드
   useEffect(() => {
     listProjects()
       .then((res) => {
@@ -63,11 +63,11 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthentica
         }
       })
       .catch(() => {
-        // Backend not available — demo mode
+        // 백엔드 사용 불가 — 데모 모드
       });
   }, []);
 
-  // Load repos and services when project is selected
+  // 프로젝트 선택 시 레포 및 서비스 로드
   useEffect(() => {
     if (selectedProjectId) {
       getProjectDetail(selectedProjectId)
@@ -91,19 +91,19 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthentica
     }
   }, [selectedProjectId]);
 
-  // When analysis completes, switch to the new project and reload graph
+  // 분석 완료 시 새 프로젝트로 전환하고 그래프 다시 로드
   useEffect(() => {
     if (analysis.completedProjectId) {
       setSelectedProjectId(analysis.completedProjectId);
-      // Force graph reload (even if same project was already selected)
+      // 그래프 강제 리로드 (같은 프로젝트가 이미 선택된 경우에도)
       graph.loadGraph(analysis.completedProjectId);
-      // Refresh project list
+      // 프로젝트 목록 새로고침
       listProjects()
         .then((res) => {
           if (res.success) setProjects(res.data);
         })
         .catch(() => {});
-      // Refresh repos and services
+      // 레포 및 서비스 새로고침
       getProjectDetail(analysis.completedProjectId)
         .then((res) => {
           if (res.success && res.data.repos) {
@@ -128,7 +128,7 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthentica
           setProjectRepos((prev) => [...prev, res.data]);
         }
       } catch {
-        // Ignore - could be duplicate
+        // 무시 — 중복일 수 있음
       }
     },
     [selectedProjectId]
@@ -141,7 +141,7 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthentica
         await removeRepoApi(selectedProjectId, repoId);
         setProjectRepos((prev) => prev.filter((r) => r.id !== repoId));
       } catch {
-        // Ignore
+        // 무시
       }
     },
     [selectedProjectId]
@@ -176,7 +176,7 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthentica
           setSelectedProjectId(null);
         }
       } catch {
-        // Ignore
+        // 무시
       }
     },
     [selectedProjectId]
@@ -189,7 +189,7 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthentica
         await renameService(selectedProjectId, serviceId, newName);
         graph.loadGraph(selectedProjectId);
       } catch {
-        // Ignore
+        // 무시
       }
     },
     [selectedProjectId, graph]
@@ -214,7 +214,7 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthentica
         services={services}
       />
 
-      {/* Project List */}
+      {/* 프로젝트 목록 */}
       <div className="bg-[var(--surface-1)] border border-[var(--border)] rounded-xl p-4 shadow-sm">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
@@ -228,7 +228,7 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthentica
           </button>
         </div>
 
-        {/* Create Project Form */}
+        {/* 프로젝트 생성 폼 */}
         {showCreateProject && (
           <div className="mb-3 flex gap-2">
             <input
@@ -306,7 +306,7 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthentica
         )}
       </div>
 
-      {/* Graph Info */}
+      {/* 그래프 정보 */}
       {graph.graphData && (
         <div className="bg-[var(--surface-1)] border border-[var(--border)] rounded-xl p-4 shadow-sm">
           <h2 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-3">
@@ -359,7 +359,7 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthentica
         </div>
       )}
 
-      {/* Usage Hints */}
+      {/* 사용법 안내 */}
       <div className="bg-[var(--surface-1)] border border-[var(--border)] rounded-xl p-4 shadow-sm">
         <h2 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-3">
           사용법

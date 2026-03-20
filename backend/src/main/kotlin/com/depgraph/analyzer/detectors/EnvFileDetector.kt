@@ -23,7 +23,7 @@ class EnvFileDetector(
     override fun detect(projectRoot: Path): List<DetectedService> {
         val allEnvVars = mutableMapOf<String, String>()
 
-        // Collect env vars from all .env files
+        // 모든 .env 파일에서 환경변수 수집
         Files.walk(projectRoot, 3).use { stream ->
             stream
                 .filter { Files.isRegularFile(it) }
@@ -35,7 +35,7 @@ class EnvFileDetector(
                 }
         }
 
-        // Extract service names from URL env vars
+        // URL 환경변수에서 서비스명 추출
         val services = allEnvVars
             .filter { (_, value) -> value.startsWith("http://") || value.startsWith("https://") }
             .mapNotNull { (key, value) -> extractServiceFromEnvVar(key, value) }
@@ -52,7 +52,7 @@ class EnvFileDetector(
             val uri = URI.create(value)
             val host = uri.host ?: return null
             if (host in IGNORED_HOSTS) return null
-            // Use hostname as service name (e.g. account-service from http://account-service:3000)
+            // 호스트명을 서비스명으로 사용 (예: http://account-service:3000에서 account-service)
             val serviceName = host.split(".").first()
 
             DetectedService(

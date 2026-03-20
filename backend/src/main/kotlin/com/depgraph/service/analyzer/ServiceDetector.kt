@@ -50,7 +50,7 @@ class ServiceDetector(
                 .orElseThrow { ProjectRepoNotFoundException(it) }
         }
 
-        // Remove existing services: per-repo or whole project
+        // 기존 서비스 삭제: 레포 단위 또는 프로젝트 전체
         if (repoId != null) {
             serviceRepository.deleteAllByRepoId(repoId)
         } else {
@@ -59,7 +59,7 @@ class ServiceDetector(
 
         val detected = mutableListOf<Service>()
 
-        // Check if root directory itself is a service (single-service repo)
+        // 루트 디렉토리 자체가 서비스인지 확인 (단일 서비스 레포)
         detectTechStack(workDir)?.let { techStack ->
             val serviceName = workDir.fileName.toString()
             val service = Service(
@@ -73,7 +73,7 @@ class ServiceDetector(
             log.debug { "Detected root service: $serviceName ($techStack)" }
         }
 
-        // Walk directories to find service roots, filtering excluded dirs
+        // 제외 디렉토리를 필터링하면서 서비스 루트를 탐색
         walkFiltered(workDir, maxDepth = 3) { dir ->
             detectTechStack(dir)?.let { techStack ->
                 val relativePath = workDir.relativize(dir).toString()
@@ -94,7 +94,7 @@ class ServiceDetector(
     }
 
     /**
-     * Recursively walk directories up to [maxDepth], skipping [excludedDirs].
+     * [maxDepth]까지 디렉토리를 재귀적으로 탐색하며, [excludedDirs]는 건너뜁니다.
      */
     private fun walkFiltered(root: Path, maxDepth: Int, visitor: (Path) -> Unit) {
         doWalk(root, root, maxDepth, 0, visitor)
@@ -129,7 +129,7 @@ class ServiceDetector(
         if (!packageJsonFile.exists()) return false
         return try {
             val content = packageJsonFile.readText()
-            // Check if it has runnable scripts indicating a real service/app
+            // 실제 서비스/앱을 나타내는 실행 가능한 스크립트가 있는지 확인
             "\"start\"" in content || "\"dev\"" in content || "\"serve\"" in content || "\"build\"" in content
         } catch (ex: Exception) {
             false

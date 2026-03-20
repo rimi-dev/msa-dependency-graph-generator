@@ -42,7 +42,7 @@ export const useGraph = (projectId: string | null) => {
         throw new Error(res.error?.message ?? 'Failed to load graph');
       }
     } catch {
-      // Fall back to mock data when backend is unavailable
+      // 백엔드 사용 불가 시 목 데이터로 대체
       const { nodes, links } = convertGraphData(MOCK_GRAPH_DATA);
       setState({
         graphData: MOCK_GRAPH_DATA,
@@ -71,7 +71,7 @@ export const useGraph = (projectId: string | null) => {
     if (projectId) {
       loadGraph(projectId);
     } else {
-      // Load demo data immediately when no project selected
+      // 프로젝트가 선택되지 않으면 데모 데이터를 즉시 로드
       loadMockGraph();
     }
   }, [projectId, loadGraph, loadMockGraph]);
