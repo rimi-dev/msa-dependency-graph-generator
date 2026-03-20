@@ -28,6 +28,8 @@ export interface ServiceNode {
   language: string;
   framework?: string;
   dependencyCount: { outgoing: number; incoming: number };
+  repoId?: string;
+  repoUrl?: string;
 }
 
 export type Protocol = 'HTTP' | 'gRPC' | 'MQ';
@@ -163,6 +165,8 @@ export interface D3Node extends d3.SimulationNodeDatum {
   language: string;
   framework?: string;
   dependencyCount: { outgoing: number; incoming: number };
+  repoId?: string;
+  repoUrl?: string;
   pinned?: boolean;
 }
 

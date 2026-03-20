@@ -63,6 +63,8 @@ class GraphService(
                 language = language,
                 framework = framework,
                 dependencyCount = dependencyCounts[svc.id] ?: 0,
+                repoId = svc.repo?.id,
+                repoUrl = svc.repo?.gitUrl,
             )
         }
 

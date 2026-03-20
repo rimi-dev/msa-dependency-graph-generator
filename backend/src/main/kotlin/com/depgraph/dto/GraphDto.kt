@@ -14,6 +14,8 @@ data class ServiceNodeResponse(
     val language: String,
     val framework: String? = null,
     val dependencyCount: Int = 0,
+    val repoId: String? = null,
+    val repoUrl: String? = null,
 )
 
 data class DependencyEdgeResponse(
