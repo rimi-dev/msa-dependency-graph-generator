@@ -16,10 +16,10 @@ data class DependencyResponse(
 ) {
     companion object {
         fun from(dependency: Dependency) = DependencyResponse(
-            id = dependency.id,
-            sourceServiceId = dependency.source.id,
+            id = dependency.id ?: "",
+            sourceServiceId = dependency.source.id ?: "",
             sourceServiceName = dependency.source.name,
-            targetServiceId = dependency.target.id,
+            targetServiceId = dependency.target.id ?: "",
             targetServiceName = dependency.target.name,
             type = dependency.type,
             detail = dependency.detail,

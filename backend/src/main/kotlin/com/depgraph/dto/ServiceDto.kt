@@ -15,8 +15,9 @@ data class ServiceResponse(
 ) {
     companion object {
         fun from(service: Service) = ServiceResponse(
-            id = service.id,
-            projectId = service.project.id,
+            id = service.id ?: "",
+            projectId = service.project.id ?: "",
+
             name = service.name,
             path = service.path,
             techStack = service.techStack,

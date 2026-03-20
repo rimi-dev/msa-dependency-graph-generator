@@ -85,6 +85,16 @@ npm run lint    # ESLint
 | GET | `/api/graph/{projectId}` | 의존성 그래프 조회 |
 | WS | `/ws` | WebSocket (STOMP) 엔드포인트 |
 
+## 브랜치 전략
+
+- worktree를 사용하지 않는다.
+- main 브랜치에서 직접 작업하고 커밋한다.
+
+## 커밋 메시지
+
+- 커밋 메시지는 한글로 작성한다.
+- 예: `feat: 프로젝트 분석 API 추가`, `fix: OAuth 리다이렉트 URL 수정`
+
 ## 코딩 컨벤션
 
 ### Kotlin

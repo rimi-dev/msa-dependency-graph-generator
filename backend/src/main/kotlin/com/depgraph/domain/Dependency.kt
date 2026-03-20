@@ -8,7 +8,7 @@ import java.time.Instant
 data class Dependency(
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    val id: String = "",
+    val id: String? = null,
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "source_service_id", nullable = false)

@@ -23,17 +23,13 @@ class WebSocketController(
 
     fun notifyProjectStatusChange(projectId: String, status: String) {
         log.info { "Notifying WebSocket clients: project $projectId status -> $status" }
-        messagingTemplate.convertAndSend(
-            "/topic/projects/$projectId/status",
-            mapOf("projectId" to projectId, "status" to status)
-        )
+        val payload: Any = mapOf("projectId" to projectId, "status" to status)
+        messagingTemplate.convertAndSend("/topic/projects/$projectId/status", payload)
     }
 
     fun notifyGraphUpdated(projectId: String) {
         log.info { "Notifying WebSocket clients: graph updated for project $projectId" }
-        messagingTemplate.convertAndSend(
-            "/topic/projects/$projectId/graph",
-            mapOf("projectId" to projectId, "event" to "GRAPH_UPDATED")
-        )
+        val payload: Any = mapOf("projectId" to projectId, "event" to "GRAPH_UPDATED")
+        messagingTemplate.convertAndSend("/topic/projects/$projectId/graph", payload)
     }
 }

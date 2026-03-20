@@ -8,7 +8,7 @@ import java.time.Instant
 data class Project(
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    val id: String = "",
+    val id: String? = null,
 
     @Column(nullable = false)
     val name: String,
