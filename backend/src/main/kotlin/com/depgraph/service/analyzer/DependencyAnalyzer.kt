@@ -25,6 +25,18 @@ class DependencyAnalyzer(
         Regex("""fetch\(['"]([^'"]+)"""),
     )
 
+    private val excludedDirs = setOf(
+        "node_modules", ".git", "dist", "build", "out", "target",
+        ".next", ".nuxt", "coverage", ".gradle",
+        "vendor", "venv", ".env",
+    )
+
+    private val genericNames = setOf(
+        "app", "api", "web", "server", "client", "test", "tests",
+        "lib", "core", "common", "shared", "utils", "config",
+        "src", "main", "index", "root", "base",
+    )
+
     fun analyze(projectId: String, workDir: Path, services: List<Service>): List<Dependency> {
         val serviceNames = services.associateBy { it.name.lowercase() }
         val dependencies = mutableListOf<Dependency>()
@@ -62,12 +74,33 @@ class DependencyAnalyzer(
         Files.walk(servicePath).use { stream ->
             stream
                 .filter { Files.isRegularFile(it) }
+                .filter { path ->
+                    excludedDirs.none { excluded ->
+                        path.toString().contains("/$excluded/") || path.toString().contains("\\$excluded\\")
+                    }
+                }
                 .filter { isSourceFile(it) }
                 .forEach { file ->
                     try {
                         val content = Files.readString(file)
+                        val contentLower = content.lowercase()
                         serviceNames.forEach { (name, service) ->
-                            if (name != currentServiceName.lowercase() && name in content.lowercase()) {
+                            if (name == currentServiceName.lowercase()) return@forEach
+
+                            // Skip generic names as targets — too many false positives
+                            if (name in genericNames) return@forEach
+
+                            val matched = if (name.length <= 3) {
+                                // Very short names require strict word boundary matching
+                                val pattern = Regex("""\b${Regex.escape(name)}\b""", RegexOption.IGNORE_CASE)
+                                pattern.containsMatchIn(content)
+                            } else {
+                                // Longer names use non-alpha boundary matching
+                                val pattern = Regex("""(?<![a-zA-Z])${Regex.escape(name)}(?![a-zA-Z])""", RegexOption.IGNORE_CASE)
+                                pattern.containsMatchIn(content)
+                            }
+
+                            if (matched) {
                                 val type = detectDependencyType(content, file)
                                 results.add(service to type)
                             }
