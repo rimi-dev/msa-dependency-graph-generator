@@ -10,6 +10,7 @@ import com.depgraph.service.ProjectService
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import java.nio.file.Path
 
 private val log = KotlinLogging.logger {}
@@ -31,23 +32,37 @@ class IngestionService(
     /**
      * Synchronous ingestion — use from already-async callers (e.g. AnalyzeService).
      */
-    fun ingestSync(projectId: String, request: IngestRequest, repoId: String? = null) {
+    @Transactional
+    fun ingestSync(
+        projectId: String,
+        request: IngestRequest,
+        repoId: String? = null,
+        githubToken: String? = null,
+        onProgress: ((step: String, message: String) -> Unit)? = null,
+    ) {
         log.info { "Starting ingestion for project: $projectId, repoId: $repoId" }
         projectService.updateStatus(projectId, ProjectStatus.INGESTING)
         repoId?.let { projectRepoService.updateStatus(it, ProjectRepoStatus.INGESTING) }
 
         try {
+            onProgress?.invoke("CLONING", "리포지토리 클로닝 중...")
+
             val workDir: Path = when {
                 request.gitUrl != null -> {
                     validateGitUrl(request.gitUrl)
-                    gitCloneService.clone(request.gitUrl, request.branch ?: "main")
+                    gitCloneService.clone(request.gitUrl, request.branch ?: "main", githubToken)
                 }
                 else -> throw IngestionException("No ingestion source provided (gitUrl required)")
             }
 
+            onProgress?.invoke("SCANNING", "서비스 탐지 중...")
             projectService.updateStatus(projectId, ProjectStatus.ANALYZING)
             repoId?.let { projectRepoService.updateStatus(it, ProjectRepoStatus.ANALYZING) }
+
+            onProgress?.invoke("ANALYZING", "의존성 분석 중...")
             analysisOrchestrator.analyze(projectId, workDir, repoId)
+
+            onProgress?.invoke("PERSISTING", "결과 저장 중...")
             repoId?.let { projectRepoService.markAnalyzed(it) }
             projectService.recalculateProjectStatus(projectId)
             log.info { "Ingestion completed for project: $projectId, repoId: $repoId" }
@@ -67,9 +82,16 @@ class IngestionService(
     /**
      * Ingest a specific repo within a project.
      */
-    fun ingestRepo(projectId: String, repoId: String, gitUrl: String, branch: String?) {
+    fun ingestRepo(
+        projectId: String,
+        repoId: String,
+        gitUrl: String,
+        branch: String?,
+        githubToken: String? = null,
+        onProgress: ((step: String, message: String) -> Unit)? = null,
+    ) {
         val request = IngestRequest(gitUrl = gitUrl, branch = branch ?: "main")
-        ingestSync(projectId, request, repoId)
+        ingestSync(projectId, request, repoId, githubToken, onProgress)
     }
 
     /**

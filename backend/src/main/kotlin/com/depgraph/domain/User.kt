@@ -24,6 +24,9 @@ class User(
     @Column(name = "avatar_url", length = 1024)
     var avatarUrl: String? = null,
 
+    @Column(name = "github_access_token", length = 2048)
+    var githubAccessToken: String? = null,
+
     @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: Instant = Instant.now(),
 

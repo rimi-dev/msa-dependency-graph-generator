@@ -15,6 +15,7 @@ import com.depgraph.service.analyzer.DependencyAnalyzer
 import com.depgraph.service.analyzer.ServiceDetector
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service as SpringService
+import org.springframework.transaction.annotation.Transactional
 import java.nio.file.Path
 
 private val log = KotlinLogging.logger {}
@@ -30,6 +31,7 @@ class AnalysisOrchestrator(
     private val dependencyRepository: DependencyRepository,
 ) {
 
+    @Transactional
     fun analyze(projectId: String, workDir: Path, repoId: String? = null) {
         log.info { "Starting analysis for project: $projectId, repoId: $repoId at $workDir" }
 

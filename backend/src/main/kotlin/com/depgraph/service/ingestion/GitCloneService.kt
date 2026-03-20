@@ -4,6 +4,7 @@ import com.depgraph.exception.IngestionException
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.api.errors.GitAPIException
+import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import java.nio.file.Files
@@ -17,19 +18,29 @@ class GitCloneService(
     private val workDirBase: String,
 ) {
 
-    fun clone(gitUrl: String, branch: String): Path {
+    fun clone(gitUrl: String, branch: String, githubToken: String? = null): Path {
         val targetDir = Path.of(workDirBase, generateDirName(gitUrl))
         Files.createDirectories(targetDir)
 
         log.info { "Cloning $gitUrl (branch: $branch) into $targetDir" }
 
         try {
-            Git.cloneRepository()
+            val cloneCommand = Git.cloneRepository()
                 .setURI(gitUrl)
                 .setBranch(branch)
                 .setDirectory(targetDir.toFile())
                 .setDepth(1)
-                .call()
+
+            // GitHub requires a CredentialsProvider even for public repos via HTTPS
+            val credentials = if (githubToken != null) {
+                log.info { "Using GitHub token for authenticated clone" }
+                UsernamePasswordCredentialsProvider("token", githubToken)
+            } else {
+                UsernamePasswordCredentialsProvider("", "")
+            }
+            cloneCommand.setCredentialsProvider(credentials)
+
+            cloneCommand.call()
                 .use { git ->
                     log.info { "Successfully cloned: ${git.repository.directory}" }
                 }
