@@ -71,27 +71,24 @@ class AnalysisOrchestrator(
         } else emptyList()
 
         // For dependency analysis: use ALL project services (cross-repo)
-        val allProjectServices = serviceRepository.findAllByProjectId(projectId)
+        var allProjectServices = serviceRepository.findAllByProjectId(projectId)
 
         // Delete all project dependencies and re-analyze (cross-repo dependencies)
         dependencyRepository.deleteAllBySourceProjectIdOrTargetProjectId(projectId, projectId)
 
-        // Phase 3: legacy dependency analysis with all project services
-        dependencyAnalyzer.analyze(projectId, workDir, allProjectServices)
-        log.info { "Legacy dependency analysis completed for project: $projectId" }
-
-        // Phase 4: enhanced plugin-based dependency analysis
+        // Phase 3: enhanced plugin-based dependency analysis (runs first to auto-create missing services)
         // Build service lookup with name variants (hyphen, underscore, no-separator)
         val servicesByName = mutableMapOf<String, com.depgraph.domain.Service>()
-        allProjectServices.forEach { svc ->
+        fun registerServiceVariants(svc: com.depgraph.domain.Service) {
             val name = svc.name.lowercase()
             servicesByName[name] = svc
-            // Add variants: my-service, my_service, myservice
             servicesByName[name.replace("-", "")] = svc
             servicesByName[name.replace("_", "")] = svc
             servicesByName[name.replace("-", "_")] = svc
             servicesByName[name.replace("_", "-")] = svc
         }
+        allProjectServices.forEach { registerServiceVariants(it) }
+
         val allDependencies = mutableListOf<Dependency>()
 
         allProjectServices.forEach { sourceService ->
@@ -99,14 +96,22 @@ class AnalysisOrchestrator(
             val pluginDependencies = analyzerRegistry.analyzeDependencies(servicePath, sourceService.name)
 
             pluginDependencies.forEach { detected ->
-                val targetService = servicesByName[detected.target.lowercase()]
+                var targetService = servicesByName[detected.target.lowercase()]
                 if (targetService == null) {
-                    log.warn {
-                        "Dependency target '${detected.target}' not found in known services " +
-                            "(source=${sourceService.name}, detectedBy=${detected.detectedBy}). " +
-                            "Known services: ${servicesByName.keys}"
+                    // Auto-create target service discovered via HTTP URL
+                    log.info {
+                        "Auto-creating service '${detected.target}' discovered via HTTP call " +
+                            "(source=${sourceService.name}, detectedBy=${detected.detectedBy})"
                     }
-                    return@forEach
+                    val newService = serviceRepository.save(
+                        Service(
+                            project = project,
+                            name = detected.target,
+                            techStack = TechStack.UNKNOWN,
+                        ),
+                    )
+                    registerServiceVariants(newService)
+                    targetService = newService
                 }
                 if (targetService.id == sourceService.id) return@forEach
 
@@ -125,6 +130,11 @@ class AnalysisOrchestrator(
             dependencyRepository.saveAll(allDependencies)
             log.info { "Saved ${allDependencies.size} plugin-detected dependencies for project: $projectId" }
         }
+
+        // Phase 4: legacy dependency analysis (uses all services including auto-created ones)
+        allProjectServices = serviceRepository.findAllByProjectId(projectId)
+        dependencyAnalyzer.analyze(projectId, workDir, allProjectServices)
+        log.info { "Legacy dependency analysis completed for project: $projectId" }
 
         log.info { "Full analysis completed for project: $projectId" }
     }

@@ -26,19 +26,12 @@ class NestCliDetector(
 
         // Standard NestJS project (non-monorepo)
         if (parsed["monorepo"] != true) {
-            val packageJsonPath = projectRoot.resolve("package.json")
-            val packageJson = if (Files.exists(packageJsonPath)) {
-                configFileParser.parsePackageJson(packageJsonPath)
-            } else {
-                emptyMap()
-            }
-            val name = packageJson["name"] as? String
-                ?: projectRoot.fileName.toString()
+            val name = projectRoot.fileName.toString()
 
             return listOf(
                 DetectedService(
                     id = "$id:$name",
-                    name = name.substringAfterLast("/"),
+                    name = name,
                     language = "typescript",
                     framework = "nestjs",
                     rootPath = projectRoot.toString(),

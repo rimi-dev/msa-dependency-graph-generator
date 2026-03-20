@@ -143,18 +143,6 @@ class AnalyzerRegistry(
             }
         }
 
-        // Load package.json
-        val packageJsonPath = root.resolve("package.json")
-        if (Files.exists(packageJsonPath)) {
-            configFiles["package.json"] = configFileParser.parsePackageJson(packageJsonPath)
-        }
-
-        // Load nest-cli.json
-        val nestCliPath = root.resolve("nest-cli.json")
-        if (Files.exists(nestCliPath)) {
-            configFiles["nest-cli.json"] = configFileParser.parseNestCliJson(nestCliPath)
-        }
-
         // Load .env files
         listOf(".env", ".env.local", ".env.development", ".env.production").forEach { name ->
             val path = root.resolve(name)
