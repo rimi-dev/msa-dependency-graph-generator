@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { startAnalysis, startAnalysisWithZip, getJobStatus } from '@/api/analysis';
+import { startAnalysis, startAnalysisWithZip, uploadZipToProject, getJobStatus } from '@/api/analysis';
 import { analyzeProject as analyzeProjectApi } from '@/api/projects';
 import { subscribeJobProgress } from '@/api/websocket';
 import type { AnalysisStep, JobStatus } from '@/types';
@@ -179,6 +179,32 @@ export const useAnalysis = () => {
     [startJob]
   );
 
+  const analyzeZipForProject = useCallback(
+    async (projectId: string, file: File) => {
+      try {
+        const res = await uploadZipToProject(projectId, file);
+        if (res.success && res.data) {
+          const data = res.data as { jobId?: string };
+          if (data.jobId) {
+            await startJob(data.jobId);
+          }
+        } else {
+          setState((prev) => ({
+            ...prev,
+            error: 'ZIP 업로드 실패',
+          }));
+        }
+      } catch (err) {
+        setState((prev) => ({
+          ...prev,
+          error: err instanceof Error ? err.message : 'Network error',
+          isRunning: false,
+        }));
+      }
+    },
+    [startJob]
+  );
+
   const reset = useCallback(() => {
     stopPolling();
     setState({
@@ -197,6 +223,7 @@ export const useAnalysis = () => {
     analyzeRepo,
     analyzeAllRepos,
     analyzeZip,
+    analyzeZipForProject,
     reset,
   };
 };

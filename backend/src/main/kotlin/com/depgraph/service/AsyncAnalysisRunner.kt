@@ -102,4 +102,20 @@ class AsyncAnalysisRunner(
             jobService.failJob(jobId, e.message ?: "Unknown error")
         }
     }
+
+    @Async
+    fun runZipAnalysisForProject(projectId: String, jobId: String, file: MultipartFile) {
+        try {
+            val project = projectService.updateStatus(projectId, ProjectStatus.INGESTING)
+            jobService.updateJobStep(jobId, AnalysisStep.CLONING, 10, "ZIP 파일 추출 중...", project)
+
+            ingestionService.ingestZip(projectId, file)
+
+            projectService.updateStatus(projectId, ProjectStatus.READY)
+            jobService.updateJobStep(jobId, AnalysisStep.COMPLETED, 100, "분석 완료")
+        } catch (e: Exception) {
+            logger.error(e) { "ZIP analysis failed for project $projectId, job $jobId" }
+            jobService.failJob(jobId, e.message ?: "Unknown error")
+        }
+    }
 }

@@ -1,12 +1,10 @@
 package com.depgraph.controller
 
+import com.depgraph.dto.AnalyzeResponse
 import com.depgraph.dto.ApiResponse
-import com.depgraph.dto.ProjectResponse
 import com.depgraph.exception.IngestionException
-import com.depgraph.service.ingestion.AnalysisOrchestrator
-import com.depgraph.service.ingestion.ZipIngestionService
-import com.depgraph.service.ProjectService
-import com.depgraph.domain.ProjectStatus
+import com.depgraph.service.AsyncAnalysisRunner
+import com.depgraph.service.JobService
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -17,33 +15,34 @@ private val log = KotlinLogging.logger {}
 @RestController
 @RequestMapping("/api/v1/projects/{projectId}/upload")
 class UploadController(
-    private val projectService: ProjectService,
-    private val zipIngestionService: ZipIngestionService,
-    private val analysisOrchestrator: AnalysisOrchestrator,
+    private val jobService: JobService,
+    private val asyncAnalysisRunner: AsyncAnalysisRunner,
 ) {
 
     @PostMapping("/zip")
     fun uploadZip(
         @PathVariable projectId: String,
         @RequestParam("file") file: MultipartFile,
-    ): ResponseEntity<ApiResponse<ProjectResponse>> {
+    ): ResponseEntity<ApiResponse<AnalyzeResponse>> {
         if (file.isEmpty) {
-            throw IngestionException("Uploaded file is empty")
+            throw IngestionException("업로드된 파일이 비어있습니다")
         }
         if (!file.originalFilename.orEmpty().endsWith(".zip")) {
-            throw IngestionException("Only ZIP files are supported")
+            throw IngestionException("ZIP 파일만 지원됩니다")
         }
 
-        log.info { "Received ZIP upload for project: $projectId (${file.size} bytes)" }
-        projectService.updateStatus(projectId, ProjectStatus.INGESTING)
+        log.info { "ZIP 업로드 수신: project=$projectId (${file.size} bytes)" }
 
-        val workDir = zipIngestionService.extract(file)
+        val job = jobService.createJob()
+        asyncAnalysisRunner.runZipAnalysisForProject(projectId, job.id, file)
 
-        projectService.updateStatus(projectId, ProjectStatus.ANALYZING)
-        analysisOrchestrator.analyze(projectId, workDir)
-        projectService.updateStatus(projectId, ProjectStatus.READY)
-
-        val project = projectService.findById(projectId)
-        return ResponseEntity.accepted().body(ApiResponse.success(project))
+        return ResponseEntity.accepted().body(
+            ApiResponse.success(
+                AnalyzeResponse(
+                    jobId = job.id,
+                    message = "ZIP 분석 시작 (project: $projectId)",
+                ),
+            ),
+        )
     }
 }
