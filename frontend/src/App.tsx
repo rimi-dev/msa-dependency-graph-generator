@@ -175,8 +175,8 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthentica
         if (selectedProjectId === projectId) {
           setSelectedProjectId(null);
         }
-      } catch {
-        // 무시
+      } catch (err) {
+        console.error('프로젝트 삭제 실패:', err);
       }
     },
     [selectedProjectId]
@@ -292,20 +292,21 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthentica
                     {selectedProjectId === project.id && (
                       <span className="text-[10px] text-blue-500">●</span>
                     )}
-                    <span
-                      role="button"
+                    <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
+                        e.preventDefault();
                         handleDeleteProject(project.id);
                       }}
-                      className="text-[var(--text-muted)] hover:text-red-500 transition-colors ml-1"
+                      className="w-5 h-5 flex items-center justify-center rounded hover:bg-red-500/10 text-[var(--text-muted)] hover:text-red-500 transition-colors ml-1"
                       title="프로젝트 삭제"
                     >
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <line x1="18" y1="6" x2="6" y2="18" />
                         <line x1="6" y1="6" x2="18" y2="18" />
                       </svg>
-                    </span>
+                    </button>
                   </div>
                 </div>
                 <div className="text-[10px] text-[var(--text-muted)] mt-0.5 flex gap-2">
