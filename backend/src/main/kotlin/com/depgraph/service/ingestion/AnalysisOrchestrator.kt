@@ -95,7 +95,10 @@ class AnalysisOrchestrator(
             val servicePath = workDir.resolve(sourceService.path ?: sourceService.name)
             val pluginDependencies = analyzerRegistry.analyzeDependencies(servicePath, sourceService.name)
 
-            pluginDependencies.forEach { detected ->
+            // HTTP 프로토콜만 처리
+            pluginDependencies
+                .filter { it.protocol.uppercase() in setOf("HTTP", "HTTPS") }
+                .forEach { detected ->
                 var targetService = servicesByName[detected.target.lowercase()]
                 if (targetService == null) {
                     // HTTP URL을 통해 발견된 대상 서비스 자동 생성

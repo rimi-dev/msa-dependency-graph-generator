@@ -18,11 +18,6 @@ class NestJsClientAnalyzer : AnalyzerPlugin {
     override val supportedLanguages = listOf("typescript")
     override val supportedFrameworks = listOf("nestjs")
 
-    // @Client({ name: 'service-name', ... }) 마이크로서비스 클라이언트 데코레이터 패턴
-    private val nestClientPattern = Regex(
-        """@Client\s*\(\s*\{[^}]*name\s*:\s*['"`]([^'"`]+)['"`]""",
-    )
-
     // httpService.get("http://..."), httpService.post("http://...") 등
     // 일반 따옴표 및 템플릿 리터럴 지원
     private val nestHttpServicePattern = Regex(
@@ -49,36 +44,12 @@ class NestJsClientAnalyzer : AnalyzerPlugin {
         """(?:private|protected|public)\s+(?:readonly\s+)?(\w+)\s*:\s*HttpService""",
     )
 
-    // ClientProxy.send('pattern', data) 또는 ClientProxy.emit('pattern', data)
-    private val clientProxySendPattern = Regex(
-        """(\w+)\s*\.\s*(send|emit)\s*\(\s*(?:\{[^}]*cmd\s*:\s*['"`]([^'"`]+)['"`][^}]*\}|['"`]([^'"`]+)['"`])""",
-    )
-
     override fun analyze(context: AnalysisContext): List<DetectedDependency> {
         val dependencies = mutableListOf<DetectedDependency>()
 
         val targetFiles = context.files.filter { it.language in supportedLanguages }
 
         targetFiles.forEach { file ->
-            // @Client 데코레이터 — 마이크로서비스 클라이언트 주입
-            nestClientPattern.findAll(file.content).forEach { match ->
-                val clientName = match.groupValues[1]
-
-                val location = SourceLocationExtractor.extract(file, match)
-                dependencies.add(
-                    DetectedDependency(
-                        source = ServiceNameResolver.resolveServiceName(context.projectRoot),
-                        target = clientName,
-                        protocol = "MQ",
-                        method = null,
-                        endpoint = null,
-                        confidence = 0.85,
-                        detectedBy = "$id.decorator",
-                        sourceLocations = listOf(location),
-                    ),
-                )
-            }
-
             // 생성자 주입에서 HttpService 변수명 감지
             val httpServiceVarNames = httpServiceInjectionPattern.findAll(file.content)
                 .map { it.groupValues[1] }
@@ -176,31 +147,6 @@ class NestJsClientAnalyzer : AnalyzerPlugin {
                 }
             }
 
-            // ClientProxy.send/emit 호출
-            clientProxySendPattern.findAll(file.content).forEach { match ->
-                val proxyVar = match.groupValues[1]
-                val operation = match.groupValues[2]
-                val pattern = match.groupValues[3].takeIf { it.isNotEmpty() }
-                    ?: match.groupValues[4].takeIf { it.isNotEmpty() }
-                    ?: return@forEach
-
-                // 프록시가 아닌 것이 명확한 변수는 건너뜀
-                if (proxyVar in setOf("this", "res", "req", "response", "request", "console")) return@forEach
-
-                val location = SourceLocationExtractor.extract(file, match)
-                dependencies.add(
-                    DetectedDependency(
-                        source = ServiceNameResolver.resolveServiceName(context.projectRoot),
-                        target = proxyVar,
-                        protocol = "MQ",
-                        method = operation.uppercase(),
-                        endpoint = pattern,
-                        confidence = 0.75,
-                        detectedBy = "$id.proxy",
-                        sourceLocations = listOf(location),
-                    ),
-                )
-            }
         }
 
         log.debug { "[$id] Found ${dependencies.size} dependencies" }
