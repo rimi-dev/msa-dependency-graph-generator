@@ -16,13 +16,23 @@ class DependencyAnalyzer(
     private val dependencyRepository: DependencyRepository,
 ) {
 
-    // Regex patterns to detect HTTP calls to other services
-    private val httpPatterns = listOf(
-        Regex("""http[s]?://[^/\s"']+"""),
-        Regex("""restTemplate\..*\("([^"]+)"""),
-        Regex("""webClient\..*\.uri\("([^"]+)"""),
-        Regex("""axios\.(get|post|put|delete|patch)\(['"]([^'"]+)"""),
-        Regex("""fetch\(['"]([^'"]+)"""),
+    // HTTP 호출 패턴 — URL 또는 HTTP 클라이언트 호출에서 서비스명이 포함된 경우만 감지
+    private val httpCallPatterns = listOf(
+        // URL 리터럴: http(s)://서비스명.xxx 또는 http(s)://xxx/서비스명
+        Regex("""https?://[^"'\s]*"""),
+        // Spring RestTemplate / WebClient
+        Regex("""restTemplate\s*\.\s*(get|post|put|delete|patch|exchange)\w*\s*\(\s*["'][^"']*"""),
+        Regex("""webClient\s*\.\s*(get|post|put|delete|patch)\s*\(\s*\)\s*\.uri\s*\(\s*["'][^"']*"""),
+        // Axios
+        Regex("""axios\s*\.\s*(get|post|put|delete|patch)\s*\(\s*['"][^'"]*"""),
+        Regex("""axios\s*\(\s*\{[^}]*url\s*:\s*['"][^'"]*"""),
+        // Fetch API
+        Regex("""fetch\s*\(\s*['"][^'"]*"""),
+        // Spring @FeignClient
+        Regex("""@FeignClient\s*\([^)]*(?:name|value)\s*=\s*["'][^"']*"""),
+        // 환경변수/설정에서 서비스 URL 참조
+        Regex("""[A-Z_]*(?:URL|HOST|ENDPOINT|BASE_URL|SERVICE)\s*[:=]\s*["']?https?://[^"'\s]*"""),
+        Regex("""[a-z._-]*(?:url|host|endpoint|base-url|service)[a-z._-]*\s*[:=]\s*["']?https?://[^"'\s]*"""),
     )
 
     private val excludedDirs = setOf(
@@ -45,14 +55,14 @@ class DependencyAnalyzer(
             val servicePath = workDir.resolve(source.path ?: source.name)
             if (!Files.exists(servicePath)) return@forEach
 
-            val foundTargets = scanForDependencies(servicePath, serviceNames, source.name)
-            foundTargets.forEach { (targetService, type) ->
+            val foundTargets = scanForHttpDependencies(servicePath, serviceNames, source.name)
+            foundTargets.forEach { targetService ->
                 if (targetService.id != source.id) {
                     dependencies.add(
                         Dependency(
                             source = source,
                             target = targetService,
-                            type = type,
+                            type = DependencyType.HTTP,
                         )
                     )
                 }
@@ -60,16 +70,16 @@ class DependencyAnalyzer(
         }
 
         val saved = dependencyRepository.saveAll(dependencies)
-        log.info { "Saved ${saved.size} dependencies for project: $projectId" }
+        log.info { "Saved ${saved.size} HTTP dependencies for project: $projectId" }
         return saved
     }
 
-    private fun scanForDependencies(
+    private fun scanForHttpDependencies(
         servicePath: Path,
         serviceNames: Map<String, Service>,
         currentServiceName: String,
-    ): List<Pair<Service, DependencyType>> {
-        val results = mutableListOf<Pair<Service, DependencyType>>()
+    ): List<Service> {
+        val results = mutableSetOf<String>() // serviceId set for dedup
 
         Files.walk(servicePath).use { stream ->
             stream
@@ -83,26 +93,29 @@ class DependencyAnalyzer(
                 .forEach { file ->
                     try {
                         val content = Files.readString(file)
-                        val contentLower = content.lowercase()
+
+                        // HTTP 호출 패턴에서 서비스명을 찾음
+                        val httpContexts = httpCallPatterns.flatMap { pattern ->
+                            pattern.findAll(content).map { it.value }
+                        }
+
+                        if (httpContexts.isEmpty()) return@forEach
+
+                        val httpContextJoined = httpContexts.joinToString(" ").lowercase()
+
                         serviceNames.forEach { (name, service) ->
                             if (name == currentServiceName.lowercase()) return@forEach
-
-                            // Skip generic names as targets — too many false positives
                             if (name in genericNames) return@forEach
 
-                            val matched = if (name.length <= 3) {
-                                // Very short names require strict word boundary matching
-                                val pattern = Regex("""\b${Regex.escape(name)}\b""", RegexOption.IGNORE_CASE)
-                                pattern.containsMatchIn(content)
+                            // 서비스명이 HTTP 호출 컨텍스트(URL, 클라이언트 호출) 안에 포함되어야 함
+                            val namePattern = if (name.length <= 3) {
+                                Regex("""\b${Regex.escape(name)}\b""", RegexOption.IGNORE_CASE)
                             } else {
-                                // Longer names use non-alpha boundary matching
-                                val pattern = Regex("""(?<![a-zA-Z])${Regex.escape(name)}(?![a-zA-Z])""", RegexOption.IGNORE_CASE)
-                                pattern.containsMatchIn(content)
+                                Regex("""(?<![a-zA-Z])${Regex.escape(name)}(?![a-zA-Z])""", RegexOption.IGNORE_CASE)
                             }
 
-                            if (matched) {
-                                val type = detectDependencyType(content, file)
-                                results.add(service to type)
+                            if (namePattern.containsMatchIn(httpContextJoined) && service.id != null) {
+                                results.add(service.id!!)
                             }
                         }
                     } catch (ex: Exception) {
@@ -111,7 +124,7 @@ class DependencyAnalyzer(
                 }
         }
 
-        return results.distinctBy { it.first.id }
+        return serviceNames.values.filter { it.id in results }
     }
 
     private fun isSourceFile(path: Path): Boolean {
@@ -124,16 +137,5 @@ class DependencyAnalyzer(
             name.endsWith(".yml") ||
             name.endsWith(".yaml") ||
             name.endsWith(".properties")
-    }
-
-    private fun detectDependencyType(content: String, @Suppress("UNUSED_PARAMETER") file: Path): DependencyType {
-        return when {
-            "grpc" in content.lowercase() -> DependencyType.GRPC
-            "kafka" in content.lowercase() || "rabbitmq" in content.lowercase() ||
-                "amqp" in content.lowercase() -> DependencyType.MESSAGE_QUEUE
-            "websocket" in content.lowercase() || "stomp" in content.lowercase() -> DependencyType.WEBSOCKET
-            httpPatterns.any { it.containsMatchIn(content) } -> DependencyType.HTTP
-            else -> DependencyType.HTTP
-        }
     }
 }
