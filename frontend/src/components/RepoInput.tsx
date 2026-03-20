@@ -1,12 +1,13 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { ProgressBar } from './ProgressBar';
-import type { AnalysisStep, ProjectRepo } from '@/types';
+import type { AnalysisStep, ProjectRepo, ServiceInfo } from '@/types';
 
 interface RepoInputProps {
   onAnalyzeRepo: (url: string, projectId?: string) => void;
   onAnalyzeZip: (file: File) => void;
   onAnalyzeAllRepos?: (projectId: string) => void;
-  onAddRepo?: (gitUrl: string) => void;
+  onAddRepo?: (gitUrl: string, serviceId?: string) => void;
+  services?: ServiceInfo[];
   onRemoveRepo?: (repoId: string) => void;
   isRunning: boolean;
   step: AnalysisStep | null;
@@ -34,6 +35,7 @@ export const RepoInput: React.FC<RepoInputProps> = ({
   onAnalyzeAllRepos,
   onAddRepo,
   onRemoveRepo,
+  services,
   isRunning,
   step,
   progress,
@@ -45,6 +47,7 @@ export const RepoInput: React.FC<RepoInputProps> = ({
 }) => {
   const [repoUrl, setRepoUrl] = useState('');
   const [urlError, setUrlError] = useState('');
+  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [droppedFile, setDroppedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -79,8 +82,9 @@ export const RepoInput: React.FC<RepoInputProps> = ({
 
   const handleAddRepo = () => {
     if (validateUrl(repoUrl) && onAddRepo) {
-      onAddRepo(repoUrl);
+      onAddRepo(repoUrl, selectedServiceId ?? undefined);
       setRepoUrl('');
+      setSelectedServiceId(null);
     }
   };
 
@@ -207,6 +211,26 @@ export const RepoInput: React.FC<RepoInputProps> = ({
         </div>
         {urlError && <p className="mt-1 text-xs text-red-500">{urlError}</p>}
       </div>
+
+      {/* Service selector (project mode only) */}
+      {isProjectMode && services && services.length > 0 && (
+        <div className="mb-3">
+          <label className="text-xs text-[var(--text-secondary)] mb-1 block">서비스 연결 (선택)</label>
+          <select
+            value={selectedServiceId ?? ''}
+            onChange={(e) => setSelectedServiceId(e.target.value || null)}
+            disabled={isRunning}
+            className="w-full px-3 py-2 text-sm rounded-lg border border-[var(--border)] bg-[var(--input-bg)] text-[var(--text-primary)] outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <option value="">없음 — 자동 감지</option>
+            {services.map((svc) => (
+              <option key={svc.id} value={svc.id}>
+                {svc.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* ZIP Drop Zone (only in non-project mode) */}
       {!isProjectMode && (

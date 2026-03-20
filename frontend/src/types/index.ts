@@ -165,6 +165,7 @@ export interface ServiceInfo {
 export interface AddRepoRequest {
   gitUrl: string;
   branch?: string;
+  serviceId?: string;
 }
 
 // ─── D3 Graph Internal Types ──────────────────────────────────────────────────

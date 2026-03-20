@@ -6,6 +6,7 @@ import com.depgraph.dto.AddRepoRequest
 import com.depgraph.exception.ProjectNotFoundException
 import com.depgraph.exception.ProjectRepoAlreadyExistsException
 import com.depgraph.exception.ProjectRepoNotFoundException
+import com.depgraph.exception.ServiceNotFoundException
 import com.depgraph.repository.ProjectRepoRepository
 import com.depgraph.repository.ProjectRepository
 import com.depgraph.repository.ServiceRepository
@@ -43,7 +44,19 @@ class ProjectRepoService(
             branch = request.branch,
         )
         log.info { "Adding repo ${request.gitUrl} to project $projectId" }
-        return projectRepoRepository.save(repo)
+        val savedRepo = projectRepoRepository.save(repo)
+
+        // 서비스에 레포 연결
+        request.serviceId?.let { serviceId ->
+            val service = serviceRepository.findById(serviceId)
+                .orElseThrow { ServiceNotFoundException(serviceId) }
+            if (service.project.id == projectId) {
+                serviceRepository.save(service.copy(repo = savedRepo, updatedAt = Instant.now()))
+                log.info { "Linked repo ${savedRepo.id} to service $serviceId" }
+            }
+        }
+
+        return savedRepo
     }
 
     fun addRepos(projectId: String, requests: List<AddRepoRequest>): List<ProjectRepo> {

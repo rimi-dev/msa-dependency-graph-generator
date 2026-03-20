@@ -7,6 +7,7 @@ import java.time.Instant
 data class AddRepoRequest(
     val gitUrl: String,
     val branch: String? = null,
+    val serviceId: String? = null,
 )
 
 data class AddReposRequest(
