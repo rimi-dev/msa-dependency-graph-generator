@@ -17,7 +17,10 @@ const STEPS: { key: AnalysisStep; label: string; icon: string }[] = [
 ];
 
 export const ProgressBar: React.FC<ProgressBarProps> = ({ step, progress, message, error }) => {
-  const currentStepIdx = step ? STEPS.findIndex((s) => s.key === step) : -1;
+  // FAILED는 STEPS에 없으므로, 에러 시 마지막 진행 step을 기준으로 표시
+  const isFailed = step === 'FAILED' || !!error;
+  const displayStep = step === 'FAILED' ? 'CLONING' : step;
+  const currentStepIdx = displayStep ? STEPS.findIndex((s) => s.key === displayStep) : -1;
 
   if (step === null) return null;
 
@@ -28,20 +31,20 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({ step, progress, messag
         {STEPS.map((s, i) => {
           const isDone = currentStepIdx > i;
           const isCurrent = currentStepIdx === i;
-          const isFailed = error && isCurrent;
+          const isStepFailed = isFailed && isCurrent;
 
           return (
             <React.Fragment key={s.key}>
               <div className="flex flex-col items-center gap-1">
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all duration-300
-                    ${isFailed ? 'bg-red-500 text-white shadow-lg shadow-red-500/30' : ''}
+                    ${isStepFailed ? 'bg-red-500 text-white shadow-lg shadow-red-500/30' : ''}
                     ${isDone ? 'bg-green-500 text-white shadow-lg shadow-green-500/30' : ''}
-                    ${isCurrent && !isFailed ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30 animate-pulse' : ''}
+                    ${isCurrent && !isStepFailed ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30 animate-pulse' : ''}
                     ${!isDone && !isCurrent ? 'bg-[var(--surface-2)] text-[var(--text-muted)]' : ''}
                   `}
                 >
-                  {isDone ? '✓' : isFailed ? '✕' : s.icon}
+                  {isDone ? '✓' : isStepFailed ? '✕' : s.icon}
                 </div>
                 <span
                   className={`text-[10px] font-medium
