@@ -84,6 +84,11 @@ export const analyzeSingleRepo = async (
   return response.data;
 };
 
+export const deleteProject = async (id: string): Promise<ApiResponse<void>> => {
+  const response = await apiClient.delete<ApiResponse<void>>(`/projects/${id}`);
+  return response.data;
+};
+
 export const listServices = async (
   projectId: string
 ): Promise<ApiResponse<ServiceInfo[]>> => {

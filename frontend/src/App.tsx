@@ -12,7 +12,7 @@ import { useGraph } from '@/hooks/useGraph';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
 import type { D3Link, D3Node, ProjectRepo, ServiceInfo } from '@/types';
-import { listProjects, getProjectDetail, addRepo, removeRepo as removeRepoApi, renameService, listServices } from '@/api/projects';
+import { listProjects, getProjectDetail, addRepo, removeRepo as removeRepoApi, renameService, listServices, createProject, deleteProject } from '@/api/projects';
 import type { Project } from '@/types';
 
 const App: React.FC = () => {
@@ -140,6 +140,41 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthentica
     [selectedProjectId]
   );
 
+  const [showCreateProject, setShowCreateProject] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
+
+  const handleCreateProject = useCallback(async () => {
+    const name = newProjectName.trim();
+    if (!name) return;
+    try {
+      const res = await createProject({ name });
+      if (res.success) {
+        setProjects((prev) => [...prev, res.data]);
+        setSelectedProjectId(res.data.id);
+        setNewProjectName('');
+        setShowCreateProject(false);
+      }
+    } catch {
+      // Ignore
+    }
+  }, [newProjectName]);
+
+  const handleDeleteProject = useCallback(
+    async (projectId: string) => {
+      if (!confirm('프로젝트를 삭제하시겠습니까?')) return;
+      try {
+        await deleteProject(projectId);
+        setProjects((prev) => prev.filter((p) => p.id !== projectId));
+        if (selectedProjectId === projectId) {
+          setSelectedProjectId(null);
+        }
+      } catch {
+        // Ignore
+      }
+    },
+    [selectedProjectId]
+  );
+
   const handleRenameService = useCallback(
     async (serviceId: string, newName: string) => {
       if (!selectedProjectId) return;
@@ -173,11 +208,42 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthentica
       />
 
       {/* Project List */}
-      {projects.length > 0 && (
-        <div className="bg-[var(--surface-1)] border border-[var(--border)] rounded-xl p-4 shadow-sm">
-          <h2 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-3">
+      <div className="bg-[var(--surface-1)] border border-[var(--border)] rounded-xl p-4 shadow-sm">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
             프로젝트 목록
           </h2>
+          <button
+            onClick={() => setShowCreateProject((v) => !v)}
+            className="text-xs text-blue-500 hover:text-blue-400 transition-colors font-medium"
+          >
+            {showCreateProject ? '취소' : '+ 새 프로젝트'}
+          </button>
+        </div>
+
+        {/* Create Project Form */}
+        {showCreateProject && (
+          <div className="mb-3 flex gap-2">
+            <input
+              type="text"
+              value={newProjectName}
+              onChange={(e) => setNewProjectName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleCreateProject()}
+              placeholder="프로젝트 이름"
+              className="flex-1 px-3 py-1.5 text-xs rounded-lg border border-[var(--border)] bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+              autoFocus
+            />
+            <button
+              onClick={handleCreateProject}
+              disabled={!newProjectName.trim()}
+              className="px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              생성
+            </button>
+          </div>
+        )}
+
+        {projects.length > 0 ? (
           <div className="space-y-1.5">
             {projects.map((project) => (
               <button
@@ -192,9 +258,25 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthentica
               >
                 <div className="flex items-center justify-between">
                   <span className="font-medium truncate">{project.name}</span>
-                  {selectedProjectId === project.id && (
-                    <span className="text-[10px] text-blue-500">●</span>
-                  )}
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    {selectedProjectId === project.id && (
+                      <span className="text-[10px] text-blue-500">●</span>
+                    )}
+                    <span
+                      role="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteProject(project.id);
+                      }}
+                      className="text-[var(--text-muted)] hover:text-red-500 transition-colors ml-1"
+                      title="프로젝트 삭제"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </span>
+                  </div>
                 </div>
                 <div className="text-[10px] text-[var(--text-muted)] mt-0.5 flex gap-2">
                   {project.repoCount != null && project.repoCount > 0 && (
@@ -210,8 +292,12 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthentica
               </button>
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          !showCreateProject && (
+            <p className="text-xs text-[var(--text-muted)]">프로젝트가 없습니다. 새 프로젝트를 생성하세요.</p>
+          )
+        )}
+      </div>
 
       {/* Graph Info */}
       {graph.graphData && (
