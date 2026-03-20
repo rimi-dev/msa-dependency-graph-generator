@@ -356,10 +356,10 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthentica
         )}
 
         {/* 오른쪽 상단 오버레이: 그래프 정보 + 사용법 */}
-        <div className="absolute top-3 right-3 flex flex-col gap-2 z-10 pointer-events-auto max-w-[220px]">
+        <div className="absolute top-3 right-3 flex flex-col gap-2 z-30 pointer-events-auto max-w-[220px]">
           {/* 그래프 정보 */}
           {graph.graphData && !graph.isMockData && (
-            <div className="bg-[var(--surface-1)]/90 backdrop-blur-sm border border-[var(--border)] rounded-lg px-3 py-2.5 shadow-lg">
+            <div className="bg-[var(--surface-1)] backdrop-blur-sm border border-[var(--border)] rounded-lg px-3 py-2.5 shadow-lg opacity-95">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider">그래프 정보</span>
               </div>
@@ -397,7 +397,7 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogin, onLogout, isAuthentica
           )}
 
           {/* 사용법 (접을 수 있는 형태) */}
-          <details className="bg-[var(--surface-1)]/90 backdrop-blur-sm border border-[var(--border)] rounded-lg shadow-lg">
+          <details className="bg-[var(--surface-1)] backdrop-blur-sm border border-[var(--border)] rounded-lg shadow-lg opacity-95">
             <summary className="px-3 py-2 text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider cursor-pointer select-none hover:text-[var(--text-primary)] transition-colors">
               사용법
             </summary>
